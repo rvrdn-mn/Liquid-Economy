@@ -55,9 +55,10 @@ const HEADERS: [string, boolean][] = [
   ['Last close', true],
   ['Age', false],
   ['Source', false],
+  ['Serves', false],
 ];
 
-function seriesRow({ series }: ImportResult): string[] {
+function seriesRow({ series, serves }: ImportResult): string[] {
   const first = series.bars[0]!;
   const last = series.bars[series.bars.length - 1]!;
   return [
@@ -69,6 +70,7 @@ function seriesRow({ series }: ImportResult): string[] {
     String(last.close),
     age(series.source.asOf),
     series.source.label,
+    serves.join(' '),
   ];
 }
 
@@ -118,7 +120,7 @@ function setUpImport(): void {
           const firstFew = parsed.skipped.slice(0, 5).map((s) => `line ${s.line} (${s.reason})`).join(', ');
           nodes.push(
             message(
-              `${file.name}: ${parsed.skipped.length} rows skipped, ${parsed.duplicates} duplicate timestamps. ${firstFew}`,
+              `${file.name}: ${parsed.skipped.length} rows skipped, ${parsed.duplicates} rows shared a timestamp and were combined. ${firstFew}`,
               'warn',
             ),
           );

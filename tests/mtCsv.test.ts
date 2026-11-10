@@ -67,6 +67,13 @@ describe('parseMtPriceCsv', () => {
     expect(r.timeframe).toBe('M15');
   });
 
+  it('reads a TradingView chart export with unix times', () => {
+    const text = ['time,open,high,low,close,Volume', '1767571200,10,11,9,10.5,100', '1767574800000,10.5,12,10,11,120'].join('\n');
+    const r = parseMtPriceCsv(text);
+    expect(r.bars.map((b) => b.time)).toEqual([1767571200, 1767574800]);
+    expect(r.bars[1]!.volume).toBe(120);
+  });
+
   it('reads semicolon files that use a decimal comma', () => {
     const text = ['Date;Time;Open;High;Low;Close;Volume', '05.01.2026;08:00;1,1000;1,1050;1,0950;1,1025;300'].join('\n');
     const r = parseMtPriceCsv(text);
@@ -99,16 +106,32 @@ describe('parseMtPriceCsv', () => {
     expect(r.skipped[1]!.reason).toMatch(/date/);
   });
 
-  it('sorts bars ascending and keeps the last of any duplicate timestamps', () => {
+  it('sorts bars ascending', () => {
+    const text = ['2026.01.05,02:00,3,3,3,3,0', '2026.01.05,00:00,1,1,1,1,0', '2026.01.05,01:00,2,2,2,2,0'].join('\n');
+    expect(parseMtPriceCsv(text).bars.map((b) => b.close)).toEqual([1, 2, 3]);
+  });
+
+  it('combines rows that share a timestamp instead of dropping one', () => {
+    // Seen in real HistData files: one minute split into a full row and a flat stub, in either order.
     const text = [
-      '2026.01.05,02:00,3,3,3,3,0',
-      '2026.01.05,00:00,1,1,1,1,0',
-      '2026.01.05,01:00,2,2,2,2,0',
-      '2026.01.05,01:00,2,5,2,4,0',
+      '2026.01.05,04:03,100,106,99,104,3',
+      '2026.01.05,04:03,104,104,104,104,1',
+      '2026.01.05,04:04,104,104,104,104,1',
+      '2026.01.05,04:04,103,108,102,107,4',
     ].join('\n');
     const r = parseMtPriceCsv(text);
-    expect(r.bars.map((b) => b.close)).toEqual([1, 4, 3]);
+    expect(r.duplicates).toBe(2);
+    expect(r.bars).toEqual([
+      { time: utc(2026, 1, 5, 4, 3), open: 100, high: 106, low: 99, close: 104, volume: 4 },
+      { time: utc(2026, 1, 5, 4, 4), open: 104, high: 108, low: 102, close: 107, volume: 5 },
+    ]);
+  });
+
+  it('counts an exactly repeated row once', () => {
+    const row = '2026.01.05,04:03,100,106,99,104,3';
+    const r = parseMtPriceCsv([row, row].join('\n'));
     expect(r.duplicates).toBe(1);
+    expect(r.bars).toEqual([{ time: utc(2026, 1, 5, 4, 3), open: 100, high: 106, low: 99, close: 104, volume: 3 }]);
   });
 
   it('rejects files that are not price data', () => {
@@ -151,21 +174,28 @@ describe('inferTimeframe', () => {
 
 describe('parseMtFilename', () => {
   it('reads MT5 export names', () => {
-    expect(parseMtFilename('XAUUSD_H1_202601020000_202611100000.csv')).toEqual({ instrument: 'XAUUSD', timeframe: 'H1' });
-    expect(parseMtFilename('EURUSD_Daily_202501010000_202611100000.csv')).toEqual({ instrument: 'EURUSD', timeframe: 'D1' });
-    expect(parseMtFilename('C:\\exports\\GBPJPY_M15_2026.csv')).toEqual({ instrument: 'GBPJPY', timeframe: 'M15' });
+    expect(parseMtFilename('XAUUSD_H1_202601020000_202611100000.csv')).toEqual({ instrument: 'XAUUSD', timeframe: 'H1', barSeconds: 3600 });
+    expect(parseMtFilename('EURUSD_Daily_202501010000_202611100000.csv')).toEqual({ instrument: 'EURUSD', timeframe: 'D1', barSeconds: 86400 });
+    expect(parseMtFilename('C:\\exports\\GBPJPY_M15_2026.csv')).toEqual({ instrument: 'GBPJPY', timeframe: 'M15', barSeconds: 900 });
   });
 
   it('reads MT4 export names, where the period is minutes after the symbol', () => {
-    expect(parseMtFilename('EURUSD60.csv')).toEqual({ instrument: 'EURUSD', timeframe: 'H1' });
-    expect(parseMtFilename('XAUUSD1440.csv')).toEqual({ instrument: 'XAUUSD', timeframe: 'D1' });
-    expect(parseMtFilename('USDJPY5.csv')).toEqual({ instrument: 'USDJPY', timeframe: 'M5' });
+    expect(parseMtFilename('EURUSD60.csv')).toMatchObject({ instrument: 'EURUSD', timeframe: 'H1' });
+    expect(parseMtFilename('XAUUSD1440.csv')).toMatchObject({ instrument: 'XAUUSD', timeframe: 'D1' });
+    expect(parseMtFilename('USDJPY5.csv')).toMatchObject({ instrument: 'USDJPY', timeframe: 'M5' });
+  });
+
+  it('reads HistData and TradingView names', () => {
+    expect(parseMtFilename('DAT_MT_XAUUSD_M1_202610.csv')).toEqual({ instrument: 'XAUUSD', timeframe: null, barSeconds: 60 });
+    expect(parseMtFilename('OANDA_XAUUSD, 60.csv')).toEqual({ instrument: 'XAUUSD', timeframe: 'H1', barSeconds: 3600 });
+    expect(parseMtFilename('FX_EURUSD, 1D.csv')).toEqual({ instrument: 'EURUSD', timeframe: 'D1', barSeconds: 86400 });
+    expect(parseMtFilename('OANDA_GBPUSD, 5.csv')).toMatchObject({ instrument: 'GBPUSD', timeframe: 'M5' });
   });
 
   it('copes with broker suffixes and unknown names', () => {
-    expect(parseMtFilename('EURUSD.m_H4.csv')).toEqual({ instrument: 'EURUSD', timeframe: 'H4' });
-    expect(parseMtFilename('GOLD_H1.csv')).toEqual({ instrument: 'XAUUSD', timeframe: 'H1' });
-    expect(parseMtFilename('prices.csv')).toEqual({ instrument: null, timeframe: null });
-    expect(parseMtFilename('EURUSD_M1.csv')).toEqual({ instrument: 'EURUSD', timeframe: null });
+    expect(parseMtFilename('EURUSD.m_H4.csv')).toMatchObject({ instrument: 'EURUSD', timeframe: 'H4' });
+    expect(parseMtFilename('GOLD_H1.csv')).toMatchObject({ instrument: 'XAUUSD', timeframe: 'H1' });
+    expect(parseMtFilename('prices.csv')).toEqual({ instrument: null, timeframe: null, barSeconds: null });
+    expect(parseMtFilename('EURUSD_W1.csv')).toEqual({ instrument: 'EURUSD', timeframe: null, barSeconds: null });
   });
 });

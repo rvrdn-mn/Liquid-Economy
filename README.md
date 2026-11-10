@@ -13,7 +13,7 @@ Phase 0 (data check) is done. The panels are not built yet.
 
 | Phase | State |
 | --- | --- |
-| 0. Data check | Done: sources chosen, adapter interface, MT4/MT5 importer, sample files |
+| 0. Data check | Done: sources chosen, adapter interface, price-file importer, sample files |
 | 1. Shell | Next |
 | 2. Core numbers | |
 | 3. Weather map | |
@@ -33,8 +33,8 @@ npm run build    # static site in dist/
 ## Data
 
 See [docs/DATA_SOURCES.md](docs/DATA_SOURCES.md) for every source, its
-delay and its terms. In short: price history comes from your own MT4/MT5
-exports, near-live gold from gold-api.com, daily reference rates from
+delay and its terms. In short: intraday price history comes from files you
+import yourself (HistData.com, MT4/MT5 or TradingView exports), near-live gold from gold-api.com, daily reference rates from
 Frankfurter, and the 10-year yield from the US Treasury. No free near-live
 forex feed met the requirements, so intraday forex is file-only.
 
@@ -44,7 +44,7 @@ are real published rates but they are not intraday market prices.
 ## Layout
 
 ```
-src/data/      data adapters: types, instruments, MT4/MT5 importer, file adapter
+src/data/      data adapters: types, instruments, price-file importer, bar building, file adapter
 tests/         unit tests
 public/samples sample price files and their manifest
 scripts/       sample regeneration

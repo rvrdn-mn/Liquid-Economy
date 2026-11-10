@@ -18,7 +18,8 @@
  * file itself does not say which zone that is, so the caller passes
  * `utcOffsetMinutes` (a setting). Bar.time is always stored as UTC.
  *
- * Rows that cannot be read are skipped and reported, never repaired.
+ * Rows that cannot be read are skipped and reported, never repaired. Rows
+ * that share a timestamp are combined into one bar and counted.
  */
 import { TIMEFRAME_SECONDS, TIMEFRAMES, type Bar, type InstrumentId, type Timeframe } from './types';
 import { normaliseSymbol } from './instruments';
@@ -44,8 +45,10 @@ export interface ParsedPriceFile {
   bars: Bar[];
   /** Inferred from the most common gap between bars; null if unclear. */
   timeframe: Timeframe | null;
+  /** Most common gap between bars in seconds (60 for one-minute files). */
+  barSeconds: number | null;
   skipped: SkippedRow[];
-  /** Rows dropped because a later row had the same timestamp. */
+  /** Rows that shared a timestamp with an earlier row and were folded into it. */
   duplicates: number;
 }
 
@@ -159,6 +162,14 @@ function toEpochSeconds(date: string, time: string | undefined, utcOffsetMinutes
   return ms / 1000 - utcOffsetMinutes * 60;
 }
 
+/** Unix time in seconds (9-10 digits) or milliseconds (13 digits), else null. */
+function parseUnixTime(s: string): number | null {
+  const trimmed = s.trim().replace(/^"|"$/g, '');
+  if (/^\d{9,10}$/.test(trimmed)) return Number(trimmed);
+  if (/^\d{13}$/.test(trimmed)) return Math.floor(Number(trimmed) / 1000);
+  return null;
+}
+
 function splitDateTime(s: string): { date: string; time?: string; offsetMinutes?: number } {
   const trimmed = s.trim().replace(/^"|"$/g, '');
   const m = /^(\S+?)[T ](\d{1,2}:\d{2}(?::\d{2})?)(?:\.\d+)?(Z|[+-]\d{2}:?\d{2})?$/.exec(trimmed);
@@ -182,8 +193,8 @@ function parseNumber(cell: string | undefined, decimalComma: boolean): number {
   return /^-?\d+(\.\d+)?$/.test(s) ? Number(s) : NaN;
 }
 
-/** Most common gap between consecutive bars, matched to a known timeframe. */
-export function inferTimeframe(bars: readonly Bar[]): Timeframe | null {
+/** Most common gap between consecutive bars, in seconds; null if too few bars. */
+export function inferBarSeconds(bars: readonly Bar[]): number | null {
   if (bars.length < 3) return null;
   const counts = new Map<number, number>();
   for (let i = 1; i < bars.length; i++) {
@@ -198,7 +209,13 @@ export function inferTimeframe(bars: readonly Bar[]): Timeframe | null {
       bestCount = n;
     }
   }
-  return TIMEFRAMES.find((tf) => TIMEFRAME_SECONDS[tf] === best) ?? null;
+  return best;
+}
+
+/** Bar spacing matched to one of the app's timeframes; null if it is none of them. */
+export function inferTimeframe(bars: readonly Bar[]): Timeframe | null {
+  const seconds = inferBarSeconds(bars);
+  return TIMEFRAMES.find((tf) => TIMEFRAME_SECONDS[tf] === seconds) ?? null;
 }
 
 export function parseMtPriceCsv(text: string, options: ParseOptions = {}): ParsedPriceFile {
@@ -234,8 +251,13 @@ export function parseMtPriceCsv(text: string, options: ParseOptions = {}): Parse
 
     let time: number | null;
     if (map.datetime !== undefined) {
-      const dt = splitDateTime(cells[map.datetime] ?? '');
-      time = toEpochSeconds(dt.date, dt.time, dt.offsetMinutes ?? utcOffsetMinutes);
+      const cell = cells[map.datetime] ?? '';
+      const unix = parseUnixTime(cell);
+      if (unix !== null) time = unix;
+      else {
+        const dt = splitDateTime(cell);
+        time = toEpochSeconds(dt.date, dt.time, dt.offsetMinutes ?? utcOffsetMinutes);
+      }
     } else {
       const timeCell = map.time !== undefined ? cells[map.time] : undefined;
       time = toEpochSeconds(cells[map.date!] ?? '', timeCell, utcOffsetMinutes);
@@ -263,8 +285,23 @@ export function parseMtPriceCsv(text: string, options: ParseOptions = {}): Parse
       const volume = parseNumber(cells[map.volume], decimalComma);
       if (Number.isFinite(volume) && volume >= 0) bar.volume = volume;
     }
-    if (byTime.has(time)) duplicates++;
-    byTime.set(time, bar);
+    const earlier = byTime.get(time);
+    if (!earlier) {
+      byTime.set(time, bar);
+      continue;
+    }
+    // Two rows for one timestamp. Identical rows (overlapping exports) count
+    // once. Different rows are pieces of the same bar, in file order, so they
+    // are combined; dropping either would lose part of the real range.
+    duplicates++;
+    const same =
+      earlier.open === open && earlier.high === high && earlier.low === low && earlier.close === close && earlier.volume === bar.volume;
+    if (same) continue;
+    earlier.high = Math.max(earlier.high, high);
+    earlier.low = Math.min(earlier.low, low);
+    earlier.close = close;
+    if (earlier.volume !== undefined && bar.volume !== undefined) earlier.volume += bar.volume;
+    else delete earlier.volume;
   }
 
   const bars = [...byTime.values()].sort((a, b) => a.time - b.time);
@@ -280,46 +317,71 @@ export function parseMtPriceCsv(text: string, options: ParseOptions = {}): Parse
       ? 'mt4'
       : 'generic';
 
-  return { format, delimiter, hasHeader, bars, timeframe: inferTimeframe(bars), skipped, duplicates };
+  return { format, delimiter, hasHeader, bars, timeframe: inferTimeframe(bars), barSeconds: inferBarSeconds(bars), skipped, duplicates };
 }
 
-const NAME_TIMEFRAMES: Record<string, Timeframe> = {
-  M5: 'M5',
-  M15: 'M15',
-  H1: 'H1',
-  H4: 'H4',
-  D1: 'D1',
-  DAILY: 'D1',
-  '5': 'M5',
-  '15': 'M15',
-  '60': 'H1',
-  '240': 'H4',
-  '1440': 'D1',
+/** Seconds per bar for the period words and minute counts used in file names. */
+const NAME_PERIODS: Record<string, number> = {
+  M1: 60,
+  M5: 300,
+  M15: 900,
+  H1: 3600,
+  H4: 14400,
+  D1: 86400,
+  DAILY: 86400,
+  '1D': 86400,
+  D: 86400,
+  '1': 60,
+  '5': 300,
+  '15': 900,
+  '60': 3600,
+  '240': 14400,
+  '1440': 86400,
 };
 
+export interface FileNameInfo {
+  instrument: InstrumentId | null;
+  /** One of the app's timeframes, or null (unknown, or one-minute). */
+  timeframe: Timeframe | null;
+  /** Seconds per bar when the name says, including 60 for one-minute files. */
+  barSeconds: number | null;
+}
+
 /**
- * Read instrument and timeframe from an export's file name.
- *   MT5: XAUUSD_H1_202601020000_202611100000.csv, XAUUSD_Daily_....csv
- *   MT4: EURUSD60.csv, XAUUSD1440.csv
- * Either part is null when the name does not say.
+ * Read instrument and period from an export's file name.
+ *   MT5:         XAUUSD_H1_202601020000_202611100000.csv, XAUUSD_Daily_....csv
+ *   MT4:         EURUSD60.csv, XAUUSD1440.csv
+ *   HistData:    DAT_MT_XAUUSD_M1_202610.csv
+ *   TradingView: "OANDA_XAUUSD, 60.csv", "FX_EURUSD, 1D.csv"
+ * Any part is null when the name does not say.
  */
-export function parseMtFilename(fileName: string): { instrument: InstrumentId | null; timeframe: Timeframe | null } {
+export function parseMtFilename(fileName: string): FileNameInfo {
   const stem = fileName.replace(/^.*[\\/]/, '').replace(/\.[A-Za-z0-9]+$/, '');
   const parts = stem.split(/[_\-\s,]+/).filter(Boolean);
-  const first = parts[0] ?? '';
-  const instrument = normaliseSymbol(first.replace(/\d+$/, ''));
 
-  let timeframe: Timeframe | null = null;
-  for (const part of parts.slice(1)) {
-    const tf = NAME_TIMEFRAMES[part.toUpperCase()];
-    if (tf) {
-      timeframe = tf;
+  let instrument: InstrumentId | null = null;
+  let symbolIndex = -1;
+  for (let i = 0; i < parts.length; i++) {
+    const found = normaliseSymbol(parts[i]!.replace(/\d+$/, ''));
+    if (found) {
+      instrument = found;
+      symbolIndex = i;
       break;
     }
   }
-  if (!timeframe) {
-    const trailing = /(\d+)$/.exec(first);
-    if (trailing) timeframe = NAME_TIMEFRAMES[trailing[1]!] ?? null;
+
+  let barSeconds: number | null = null;
+  for (const part of parts.slice(symbolIndex + 1)) {
+    const seconds = NAME_PERIODS[part.toUpperCase()];
+    if (seconds) {
+      barSeconds = seconds;
+      break;
+    }
   }
-  return { instrument, timeframe };
+  if (barSeconds === null && symbolIndex >= 0) {
+    const trailing = /(\d+)$/.exec(parts[symbolIndex]!);
+    if (trailing) barSeconds = NAME_PERIODS[trailing[1]!] ?? null;
+  }
+  const timeframe = TIMEFRAMES.find((tf) => TIMEFRAME_SECONDS[tf] === barSeconds) ?? null;
+  return { instrument, timeframe, barSeconds };
 }

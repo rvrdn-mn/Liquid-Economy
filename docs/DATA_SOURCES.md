@@ -11,7 +11,7 @@ The app is for market context only. It is not financial advice.
 
 | Need | Decision for version 1 | Freshness shown in the app |
 | --- | --- | --- |
-| Price history, all instruments | File import (MT4/MT5 exports). Always works. | Age of the last bar in the file |
+| Price history, all instruments | File import: HistData.com one-minute files, kept private. Also reads MT4/MT5 and TradingView exports. | Age of the last bar in the file |
 | Gold, near-live | gold-api.com spot price | About 30 seconds |
 | Forex, near-live | **No free feed cleared for a public demo.** File import only. Kraken works technically but needs written consent (see below). | n/a |
 | Forex and gold, daily | Frankfurter reference rates | Daily, labelled as reference rates |
@@ -19,6 +19,24 @@ The app is for market context only. It is not financial advice.
 | Risk mood | Load from a file. Cboe's VIX file cannot be read by a browser. | Age of the file |
 | Calendar | No free source cleared. Open decision. | n/a |
 | News | Central-bank headline feeds exist but most need a scheduled copy step. Open decision. | n/a |
+
+## Decisions
+
+Settled with the project owner on 10 November 2026.
+
+- **Imported price files stay private.** They live in the owner's browser
+  and are never committed. The public demo shows the daily sample set.
+- **Intraday history comes from HistData.com**, downloaded by the owner for
+  private use. No broker account is involved. The owner is in India, where
+  the Reserve Bank of India's Alert List of unauthorised forex platforms
+  names most international MT4/MT5 brokers and MetaTrader itself.
+- **Live prices: gold only.** Forex is daily reference rates plus imported
+  files. The adapter layer leaves room for a live forex feed later.
+- **Risk mood loads from a file.**
+- **Calendar is left out of version 1.** No free source is cleared.
+- **News: proposed, not yet approved.** A scheduled job would copy
+  central-bank headlines into the site, once each bank's reuse terms have
+  been read.
 
 ## Chosen sources
 
@@ -151,12 +169,12 @@ tested.
 No free calendar source cleared for public display was found. Whether to
 add the scheduled copy step for news is an open decision.
 
-### Intraday sample data
+### Intraday data for the public demo
 
 No source of intraday candles with a clear right to republish was found.
 HistData.com offers free one-minute downloads but its About and FAQ pages
-state no licence. Nothing on Dukascopy's historical data page grants
-redistribution. Neither is shipped.
+state no licence, and nothing on Dukascopy's historical data page grants
+redistribution. So no intraday file is shipped in the repository.
 
 ## Sample files
 
@@ -172,34 +190,61 @@ correlation and gold-driver maths. They are **not** enough for intraday
 charts, volatility or the session clock, which need real candles from an
 MT4/MT5 export.
 
-## MetaTrader export layouts
+## Price file layouts
 
-The importer (`src/data/mtCsv.ts`) reads these price layouts and detects
-which one it has been given:
+The importer (`src/data/mtCsv.ts`) detects which layout it has been given:
 
 | Layout | Separator | Header | Example row |
 | --- | --- | --- | --- |
-| MT5 "Export Bars" | tab | `<DATE> <TIME> <OPEN> <HIGH> <LOW> <CLOSE> <TICKVOL> <VOL> <SPREAD>` (no `<TIME>` on daily) | `2026.11.09 13:00:00 4081.32 ...` |
+| HistData.com "MetaTrader" | comma | none | `2026.10.01,00:00,4175.025000,...,0` |
 | MT4 History Center | comma | none | `2026.11.09,13:00,4081.32,...` |
-| Generic | comma, semicolon or tab | named columns, or one ISO date-time column | `2026-11-09T13:00:00Z,4081.32,...` |
+| MT5 "Export Bars" | tab | `<DATE> <TIME> <OPEN> <HIGH> <LOW> <CLOSE> <TICKVOL> <VOL> <SPREAD>` (no `<TIME>` on daily) | `2026.11.09 13:00:00 4081.32 ...` |
+| TradingView chart export | comma | `time,open,high,low,close` | time as ISO text or a unix number |
+| Generic | comma, semicolon or tab | named columns | `2026-11-09T13:00:00Z,4081.32,...` |
 
 It also accepts UTF-16 files, decimal commas in semicolon files, and broker
 symbol suffixes such as `EURUSD.m`. Rows it cannot trust are skipped and
 listed; they are never repaired.
 
-**Still to confirm with a real export.** These layouts are the platforms'
-standard output, but no file from the actual broker has been tested yet.
-The data-check page (`npm run dev`) shows what the importer makes of a file.
+A file of fine bars serves every coarser timeframe. A one-minute file gives
+M5, M15, H1, H4 and D1; the bars are built on request and labelled as built.
 
-Two things a file cannot tell the importer:
+### HistData.com files: confirmed with a real file
 
-- **Server time zone.** MetaTrader writes broker server time. The importer
-  takes an offset from UTC as a setting. Many brokers move between UTC+2
-  and UTC+3 with daylight saving, so a single fixed offset is wrong for
-  half the year; phase 1 needs a time-zone setting, not just an offset.
-- **Trade history.** Journal import is phase 5. MT4 and MT5 normally save
-  account history as an HTML or spreadsheet report, not CSV, so the journal
-  parser should be written against a real export.
+`DAT_MT_XAUUSD_M1_202610.csv` (October 2026 gold, one-minute) was
+downloaded for testing and not committed. Result: 29,998 bars, no rows
+skipped, 501 hourly bars built. Three things learned from it:
+
+- **Times are US Eastern Standard Time with no daylight saving**, per
+  HistData's FAQ. Import with an offset of UTC-5 all year.
+- **Some minutes are split across two rows** (430 in this file): one full
+  row and one flat single-price row, in either order. The importer combines
+  rows that share a timestamp, in file order, and reports the count.
+- **Volume is always zero.** HistData removes it.
+
+Its daily values agree with the Frankfurter sample for gold once
+Frankfurter's lag is allowed for: central banks publish late, so the
+blended reference trails the market by about a day.
+
+### Not yet confirmed with a real file
+
+- **MT4/MT5 exports.** The layouts are the platforms' standard output but
+  no file from a real terminal has been tested.
+- **TradingView exports.** Whether the free plan offers "Export chart
+  data" could not be confirmed. If it does, the file should import as is.
+
+### What a file cannot tell the importer
+
+- **Its time zone.** HistData is fixed at UTC-5. MetaTrader writes broker
+  server time, which often moves between UTC+2 and UTC+3 with daylight
+  saving, so phase 1 needs a time-zone setting, not only a fixed offset.
+- **Where the trading day starts.** Built daily bars currently run midnight
+  to midnight UTC, which leaves a short Sunday bar. The usual convention is
+  a day that rolls at 17:00 New York time. This becomes a setting in
+  phase 1.
+
+Journal import is phase 5 and should be written against a real trade
+history file.
 
 ## Display time zone
 

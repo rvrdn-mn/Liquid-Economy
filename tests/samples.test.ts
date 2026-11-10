@@ -40,6 +40,7 @@ describe('shipped sample files', () => {
       expect(series.source.asOf).toBe(series.bars[series.bars.length - 1]!.time);
       expect(series.bars.every((b) => b.open === b.close && b.high === b.low)).toBe(true);
     }
+    expect(results.every((r) => r.serves.join() === 'D1')).toBe(true);
   });
 
   it('contain no weekend bars', () => {
@@ -84,7 +85,8 @@ describe('FileImportAdapter', () => {
     expect(() => a.importText('prices.csv', row)).toThrow(/which instrument/);
     expect(() => a.importText('EURUSD.csv', row)).toThrow(/timeframe/);
     const r = a.importText('EURUSD60.csv', row, { now: () => 1000 });
-    expect(r.series).toMatchObject({ instrument: 'EURUSD', timeframe: 'H1' });
+    expect(r.series).toMatchObject({ instrument: 'EURUSD', timeframe: 'H1', barSeconds: 3600 });
+    expect(r.serves).toEqual(['H1', 'H4', 'D1']);
     expect(r.series.source).toEqual({ adapter: 'file', label: 'File: EURUSD60.csv', freshness: 'file', asOf: Date.UTC(2026, 0, 5) / 1000, retrievedAt: 1000 });
   });
 });
