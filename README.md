@@ -9,23 +9,36 @@ no predictions, no AI calls at runtime, no server.
 
 ## Status
 
-Phase 0 (data check) is done. The panels are not built yet.
+Phases 0 and 1 are done: the data layer and the terminal shell. The
+analysis panels and the two signature views are not built yet.
 
 | Phase | State |
 | --- | --- |
 | 0. Data check | Done: sources chosen, adapter interface, price-file importer, sample files |
-| 1. Shell | Next |
-| 2. Core numbers | |
+| 1. Shell | Done: panel grid, saved layout, command bar, chart from imported files |
+| 2. Core numbers | Next |
 | 3. Weather map | |
 | 4. Gold | |
 | 5. Journal and feeds | |
 | 6. Polish and release | |
 
+## Using it
+
+- Press `/` and type an instrument (`XAU`, `EURUSD`), a timeframe (`M5`
+  `M15` `H1` `H4` `D1`) or a panel code. `HELP` lists every command.
+  Several can go on one line: `XAU H1`.
+- Unknown input shows the closest matches instead of an error.
+- Drag the line between panels to resize. The layout, settings and imported
+  files are saved in your browser. Nothing is uploaded.
+- Out of the box the chart shows the daily sample set. For intraday charts,
+  open `FILES` and import a price file. A one-minute file serves every
+  timeframe.
+
 ## Run it
 
 ```sh
 npm install
-npm run dev      # data-check page: sample files plus a tester for your own exports
+npm run dev      # the terminal, at the address it prints
 npm test         # unit tests
 npm run build    # static site in dist/
 ```
@@ -44,9 +57,17 @@ are real published rates but they are not intraday market prices.
 ## Layout
 
 ```
-src/data/      data adapters: types, instruments, price-file importer, bar building, file adapter
+src/data/      data layer: adapters, price-file importer, bar building, browser storage, hub
+src/app/       command language, layout tree, saved state (no drawing)
+src/ui/        panel grid and command bar
+src/panels/    one file per panel; panels get data only from the hub
 tests/         unit tests
 public/samples sample price files and their manifest
 scripts/       sample regeneration
 docs/          data sources
 ```
+
+## Credits
+
+Charts are drawn with [TradingView Lightweight Charts](https://www.tradingview.com/lightweight-charts/)
+(Apache 2.0). See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

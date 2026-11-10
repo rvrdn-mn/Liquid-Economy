@@ -19,7 +19,7 @@ import {
   type SourceInfo,
   type Timeframe,
 } from './types';
-import { aggregateBars } from './aggregate';
+import { aggregateBars, type DayRoll } from './aggregate';
 import { parseMtFilename, parseMtPriceCsv, MtCsvError, type ParsedPriceFile, type ParseOptions } from './mtCsv';
 
 /** One-minute files are accepted as a source but are not a chart timeframe. */
@@ -71,6 +71,8 @@ export class FileImportAdapter implements DataAdapter {
   readonly id = 'file';
   readonly label = 'Imported files';
   private readonly store = new Map<string, ImportedSeries>();
+  /** Where built four-hour and daily bars begin. A setting. */
+  dayRoll: DayRoll = 'ny17';
 
   /** Parse a price file and add it. A later import of the same series replaces it. */
   importText(fileName: string, text: string, options: ImportOptions = {}): ImportResult {
@@ -117,6 +119,11 @@ export class FileImportAdapter implements DataAdapter {
     };
   }
 
+  /** Chart timeframes one imported file can serve. */
+  servedTimeframes(series: ImportedSeries): Timeframe[] {
+    return servedBy(series);
+  }
+
   /** The files as imported. */
   list(): ImportedSeries[] {
     return [...this.store.values()];
@@ -147,12 +154,16 @@ export class FileImportAdapter implements DataAdapter {
         .sort((x, y) => y.barSeconds - x.barSeconds)[0];
       if (!base) return null;
       const fine = to === Infinity ? base.bars : base.bars.filter((b) => b.time <= to);
-      bars = aggregateBars(fine, target).filter((b) => b.time >= from);
+      bars = aggregateBars(fine, target, this.dayRoll).filter((b) => b.time >= from);
       source = { ...base.source, label: `${base.source.label} (built from ${base.timeframe} bars)` };
       asOf = fine.length > 0 ? fine[fine.length - 1]!.time : 0;
     }
     if (bars.length === 0) return null;
     return { instrument: req.instrument, timeframe: req.timeframe, bars, source: { ...source, asOf } };
+  }
+
+  remove(instrument: InstrumentId, barSeconds: number): boolean {
+    return this.store.delete(key(instrument, barSeconds));
   }
 
   clear(): void {

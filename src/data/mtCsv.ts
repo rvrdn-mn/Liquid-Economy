@@ -14,21 +14,24 @@
  *  Generic  any delimited file with a header naming date/time/open/high/
  *       low/close columns, or a single ISO date-time column.
  *
- * MetaTrader writes bar times in the broker's server time, not UTC. The
- * file itself does not say which zone that is, so the caller passes
- * `utcOffsetMinutes` (a setting). Bar.time is always stored as UTC.
+ * Files carry times in their source's own clock, not UTC, and do not say
+ * which. The caller passes the clock as `zone` (a setting; see fileZone.ts).
+ * Bar.time is always stored as UTC.
  *
  * Rows that cannot be read are skipped and reported, never repaired. Rows
  * that share a timestamp are combined into one bar and counted.
  */
 import { TIMEFRAME_SECONDS, TIMEFRAMES, type Bar, type InstrumentId, type Timeframe } from './types';
 import { normaliseSymbol } from './instruments';
+import { wallClockToUtc, type FileZone } from './fileZone';
 
 export type MtFormat = 'mt5' | 'mt4' | 'generic';
 
 export interface ParseOptions {
-  /** Offset of the file's timestamps from UTC, in minutes. Default 0. */
+  /** Fixed offset of the file's timestamps from UTC, in minutes. Default 0. */
   utcOffsetMinutes?: number;
+  /** The file's clock, when it is not a fixed offset. Wins over `utcOffsetMinutes`. */
+  zone?: FileZone;
 }
 
 export interface SkippedRow {
@@ -148,8 +151,8 @@ function parseTimeParts(s: string): [number, number, number] | null {
   return [h, min, sec];
 }
 
-/** Returns UTC epoch seconds for a wall-clock time at the given UTC offset. */
-function toEpochSeconds(date: string, time: string | undefined, utcOffsetMinutes: number): number | null {
+/** Returns UTC epoch seconds for a wall-clock time read in the given clock. */
+function toEpochSeconds(date: string, time: string | undefined, zone: FileZone): number | null {
   const d = parseDateParts(date.trim());
   if (!d) return null;
   const t = time === undefined || time.trim() === '' ? ([0, 0, 0] as const) : parseTimeParts(time.trim());
@@ -159,7 +162,7 @@ function toEpochSeconds(date: string, time: string | undefined, utcOffsetMinutes
   const ms = Date.UTC(y, mo - 1, day, t[0], t[1], t[2]);
   // Reject impossible dates such as 31 February, which Date.UTC rolls over.
   if (new Date(ms).getUTCDate() !== day) return null;
-  return ms / 1000 - utcOffsetMinutes * 60;
+  return wallClockToUtc(ms / 1000, zone);
 }
 
 /** Unix time in seconds (9-10 digits) or milliseconds (13 digits), else null. */
@@ -219,7 +222,7 @@ export function inferTimeframe(bars: readonly Bar[]): Timeframe | null {
 }
 
 export function parseMtPriceCsv(text: string, options: ParseOptions = {}): ParsedPriceFile {
-  const utcOffsetMinutes = options.utcOffsetMinutes ?? 0;
+  const zone: FileZone = options.zone ?? options.utcOffsetMinutes ?? 0;
   const lines = text.replace(/^﻿/, '').split(/\r\n|\n|\r/);
   const firstIdx = lines.findIndex((l) => l.trim() !== '');
   if (firstIdx === -1) throw new MtCsvError('The file is empty.');
@@ -256,11 +259,11 @@ export function parseMtPriceCsv(text: string, options: ParseOptions = {}): Parse
       if (unix !== null) time = unix;
       else {
         const dt = splitDateTime(cell);
-        time = toEpochSeconds(dt.date, dt.time, dt.offsetMinutes ?? utcOffsetMinutes);
+        time = toEpochSeconds(dt.date, dt.time, dt.offsetMinutes ?? zone);
       }
     } else {
       const timeCell = map.time !== undefined ? cells[map.time] : undefined;
-      time = toEpochSeconds(cells[map.date!] ?? '', timeCell, utcOffsetMinutes);
+      time = toEpochSeconds(cells[map.date!] ?? '', timeCell, zone);
     }
     if (time === null) {
       skipped.push({ line: lineNo, reason: 'unreadable date or time' });

@@ -215,8 +215,14 @@ M5, M15, H1, H4 and D1; the bars are built on request and labelled as built.
 downloaded for testing and not committed. Result: 29,998 bars, no rows
 skipped, 501 hourly bars built. Three things learned from it:
 
-- **Times are US Eastern Standard Time with no daylight saving**, per
-  HistData's FAQ. Import with an offset of UTC-5 all year.
+- **Its clock is not the fixed UTC-5 its FAQ describes.** The FAQ says
+  "EST without daylight saving". In the file, the US jobs report spike of
+  2 October sits at 08:30, which is UTC-4, and the daily market break moves
+  by an hour on 26 October, the day after Europe's clocks changed. The
+  clock that fits is UTC-4 while Europe is on summer time and UTC-5
+  otherwise. The importer's "HistData.com" clock setting does this. With
+  it, the month builds into 22 daily bars, one per weekday; with a fixed
+  UTC-5 it built 26, with four false Saturday bars.
 - **Some minutes are split across two rows** (430 in this file): one full
   row and one flat single-price row, in either order. The importer combines
   rows that share a timestamp, in file order, and reports the count.
@@ -235,13 +241,13 @@ blended reference trails the market by about a day.
 
 ### What a file cannot tell the importer
 
-- **Its time zone.** HistData is fixed at UTC-5. MetaTrader writes broker
-  server time, which often moves between UTC+2 and UTC+3 with daylight
-  saving, so phase 1 needs a time-zone setting, not only a fixed offset.
-- **Where the trading day starts.** Built daily bars currently run midnight
-  to midnight UTC, which leaves a short Sunday bar. The usual convention is
-  a day that rolls at 17:00 New York time. This becomes a setting in
-  phase 1.
+- **Its clock.** Chosen at import in the Files panel: "HistData.com",
+  "MetaTrader server" (New York time plus seven hours, the usual broker
+  convention, not yet checked against a real broker file), or a fixed
+  offset from UTC. A wrong choice shifts every bar by whole hours.
+- **Where the trading day starts.** A setting, default 17:00 New York,
+  which is the forex convention and avoids a short Sunday bar. It applies
+  to four-hour and daily bars built from finer files.
 
 Journal import is phase 5 and should be written against a real trade
 history file.

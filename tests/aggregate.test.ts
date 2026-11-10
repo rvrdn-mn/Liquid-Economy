@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aggregateBars } from '../src/data/aggregate';
+import { aggregateBars, newYorkOffsetSeconds, windowStart } from '../src/data/aggregate';
 import { FileImportAdapter } from '../src/data/fileAdapter';
 import type { Bar } from '../src/data/types';
 
@@ -32,16 +32,60 @@ describe('aggregateBars', () => {
     expect(out[0]!.volume).toBeUndefined();
   });
 
-  it('can shift where windows start', () => {
-    // Daily bars that roll at 22:00 UTC: offset of two hours.
-    const late = { time: Date.UTC(2026, 0, 5, 22, 30) / 1000, open: 1, high: 1, low: 1, close: 1 };
-    expect(aggregateBars([late], 86400)[0]!.time).toBe(Date.UTC(2026, 0, 5) / 1000);
-    expect(aggregateBars([late], 86400, 7200)[0]!.time).toBe(Date.UTC(2026, 0, 5, 22) / 1000);
-  });
-
   it('rejects unsorted input and bad sizes', () => {
     expect(() => aggregateBars([bar(10, 1, 1, 1, 1), bar(0, 1, 1, 1, 1)], 300)).toThrow(/ascending/);
     expect(() => aggregateBars([], 0)).toThrow(RangeError);
+  });
+});
+
+describe('trading-day windows', () => {
+  const at = (y: number, m: number, d: number, h = 0, min = 0) => Date.UTC(y, m - 1, d, h, min) / 1000;
+  const H = 3600;
+
+  it('knows New York daylight saving for 2026 (8 March to 1 November)', () => {
+    expect(newYorkOffsetSeconds(at(2026, 1, 15))).toBe(-5 * H);
+    expect(newYorkOffsetSeconds(at(2026, 3, 8, 6, 59))).toBe(-5 * H);
+    expect(newYorkOffsetSeconds(at(2026, 3, 8, 7, 0))).toBe(-4 * H);
+    expect(newYorkOffsetSeconds(at(2026, 7, 1))).toBe(-4 * H);
+    expect(newYorkOffsetSeconds(at(2026, 11, 1, 5, 59))).toBe(-4 * H);
+    expect(newYorkOffsetSeconds(at(2026, 11, 1, 6, 0))).toBe(-5 * H);
+  });
+
+  it('rolls the daily bar at 17:00 New York and stamps it with the trading date', () => {
+    // October is daylight time: 17:00 New York = 21:00 UTC.
+    expect(windowStart(at(2026, 10, 5, 20, 59), 86400, 'ny17')).toBe(at(2026, 10, 5));
+    expect(windowStart(at(2026, 10, 5, 21, 0), 86400, 'ny17')).toBe(at(2026, 10, 6));
+    // January is standard time: 17:00 New York = 22:00 UTC.
+    expect(windowStart(at(2026, 1, 5, 21, 59), 86400, 'ny17')).toBe(at(2026, 1, 5));
+    expect(windowStart(at(2026, 1, 5, 22, 0), 86400, 'ny17')).toBe(at(2026, 1, 6));
+  });
+
+  it('puts the Sunday evening open into Monday, so there is no Sunday bar', () => {
+    const sundayOpen = at(2026, 10, 4, 22, 0); // Sunday 18:00 New York
+    expect(new Date(sundayOpen * 1000).getUTCDay()).toBe(0);
+    expect(windowStart(sundayOpen, 86400, 'ny17')).toBe(at(2026, 10, 5)); // Monday
+    expect(windowStart(sundayOpen, 86400, 'utc')).toBe(at(2026, 10, 4));
+  });
+
+  it('starts four-hour bars at 17:00 New York, at their real UTC time', () => {
+    expect(windowStart(at(2026, 10, 5, 22, 30), 14400, 'ny17')).toBe(at(2026, 10, 5, 21));
+    expect(windowStart(at(2026, 10, 6, 0, 59), 14400, 'ny17')).toBe(at(2026, 10, 5, 21));
+    expect(windowStart(at(2026, 10, 6, 1, 0), 14400, 'ny17')).toBe(at(2026, 10, 6, 1));
+    expect(windowStart(at(2026, 10, 5, 22, 30), 14400, 'utc')).toBe(at(2026, 10, 5, 20));
+  });
+
+  it('leaves hourly and shorter bars on the clock', () => {
+    expect(windowStart(at(2026, 10, 5, 22, 37), 3600, 'ny17')).toBe(at(2026, 10, 5, 22));
+    expect(windowStart(at(2026, 10, 5, 22, 37), 300, 'ny17')).toBe(at(2026, 10, 5, 22, 35));
+  });
+
+  it('builds daily bars on that roll', () => {
+    const mk = (time: number, price: number): Bar => ({ time, open: price, high: price, low: price, close: price });
+    const fine = [mk(at(2026, 10, 5, 20, 0), 1), mk(at(2026, 10, 5, 21, 0), 2), mk(at(2026, 10, 6, 20, 0), 3)];
+    expect(aggregateBars(fine, 86400, 'ny17')).toEqual([
+      { time: at(2026, 10, 5), open: 1, high: 1, low: 1, close: 1 },
+      { time: at(2026, 10, 6), open: 2, high: 3, low: 2, close: 3 },
+    ]);
   });
 });
 

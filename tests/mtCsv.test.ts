@@ -89,6 +89,24 @@ describe('parseMtPriceCsv', () => {
     expect(west.bars[0]!.time).toBe(utc(2026, 1, 6, 0));
   });
 
+  it('reads HistData.com times as UTC-4 in European summer and UTC-5 otherwise', () => {
+    const at = (row: string) => parseMtPriceCsv(`${row},1,2,1,2,0`, { zone: 'histdata' }).bars[0]!.time;
+    // Seen in a real file: the 2 October 2026 US jobs report (12:30 UTC) sits at 08:30.
+    expect(at('2026.10.02,08:30')).toBe(utc(2026, 10, 2, 12, 30));
+    // Europe left summer time on 25 October 2026; the US not until 1 November.
+    expect(at('2026.10.27,08:30')).toBe(utc(2026, 10, 27, 13, 30));
+    expect(at('2026.01.15,08:30')).toBe(utc(2026, 1, 15, 13, 30));
+    expect(at('2026.07.15,08:30')).toBe(utc(2026, 7, 15, 12, 30));
+  });
+
+  it('reads the usual MetaTrader server clock as New York plus seven hours', () => {
+    const at = (row: string) => parseMtPriceCsv(`${row},1,2,1,2,0`, { zone: 'ny-close' }).bars[0]!.time;
+    // Server midnight is 17:00 New York: 21:00 UTC in US summer, 22:00 UTC in winter.
+    expect(at('2026.07.15,00:00')).toBe(utc(2026, 7, 14, 21, 0));
+    expect(at('2026.01.15,00:00')).toBe(utc(2026, 1, 14, 22, 0));
+    expect(at('2026.10.27,00:00')).toBe(utc(2026, 10, 26, 21, 0));
+  });
+
   it('skips and reports rows it cannot trust instead of repairing them', () => {
     const text = [
       '2026.01.05,00:00,100,101,99,100,1',

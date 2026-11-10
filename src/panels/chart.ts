@@ -1,0 +1,230 @@
+/**
+ * Chart panel: candlesticks for the selected instrument and timeframe.
+ * Drawing only. Bars come from the hub; nothing is computed here.
+ */
+import {
+  CandlestickSeries,
+  ColorType,
+  CrosshairMode,
+  LineSeries,
+  TickMarkType,
+  createChart,
+  type IChartApi,
+  type ISeriesApi,
+  type Time,
+  type UTCTimestamp,
+} from 'lightweight-charts';
+import { TIMEFRAMES, type Bar, type BarSeries, type InstrumentId, type Timeframe } from '../data/types';
+import { formatAge, formatDate, formatDateTime, h, zoneLabel, type Zone } from '../ui/dom';
+import type { PanelFactory } from './types';
+
+const COLORS = {
+  text: '#8b95a5',
+  grid: '#161b23',
+  border: '#222a35',
+  up: '#3fb27f',
+  down: '#e0605a',
+  gold: '#d9a441',
+  accent: '#4fb3c8',
+};
+
+function precision(instrument: InstrumentId): number {
+  if (instrument === 'XAUUSD') return 2;
+  return instrument.endsWith('JPY') ? 3 : 5;
+}
+
+const pad = (n: number) => String(n).padStart(2, '0');
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** Axis labels in the chosen zone. Daily stamps are dates and are not shifted. */
+function tickLabel(time: Time, type: TickMarkType, zone: Zone, daily: boolean): string {
+  const d = new Date((time as number) * 1000);
+  const utc = zone === 'utc' || daily;
+  const year = utc ? d.getUTCFullYear() : d.getFullYear();
+  const month = utc ? d.getUTCMonth() : d.getMonth();
+  const day = utc ? d.getUTCDate() : d.getDate();
+  const hours = utc ? d.getUTCHours() : d.getHours();
+  const minutes = utc ? d.getUTCMinutes() : d.getMinutes();
+  switch (type) {
+    case TickMarkType.Year:
+      return String(year);
+    case TickMarkType.Month:
+      return MONTHS[month]!;
+    case TickMarkType.DayOfMonth:
+      return `${day} ${MONTHS[month]}`;
+    default:
+      return `${pad(hours)}:${pad(minutes)}`;
+  }
+}
+
+export const chartPanel: PanelFactory = (body, footer, ctx) => {
+  const { state, hub } = ctx;
+
+  const symbol = h('span', { class: 'chart-symbol' });
+  const tfButtons = new Map<Timeframe, HTMLButtonElement>();
+  const tfBar = h('div', { class: 'tf-bar', role: 'group', 'aria-label': 'Timeframe' });
+  for (const tf of TIMEFRAMES) {
+    const b = h('button', { type: 'button', class: 'tf' }, tf);
+    b.addEventListener('click', () => state.update({ timeframe: tf }));
+    tfButtons.set(tf, b);
+    tfBar.append(b);
+  }
+  const legend = h('div', { class: 'chart-legend' });
+  const toolbar = h('div', { class: 'chart-toolbar' }, symbol, tfBar, legend);
+  const canvasHost = h('div', { class: 'chart-host' });
+  const empty = h('div', { class: 'panel-empty', hidden: true });
+  body.classList.add('chart-body');
+  body.append(toolbar, h('div', { class: 'chart-area' }, canvasHost, empty));
+
+  let daily = false;
+  const chart: IChartApi = createChart(canvasHost, {
+    autoSize: true,
+    layout: {
+      background: { type: ColorType.Solid, color: 'transparent' },
+      textColor: COLORS.text,
+      fontFamily: "ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace",
+      fontSize: 11,
+    },
+    grid: { vertLines: { color: COLORS.grid }, horzLines: { color: COLORS.grid } },
+    crosshair: { mode: CrosshairMode.Normal },
+    rightPriceScale: { borderColor: COLORS.border },
+    timeScale: {
+      borderColor: COLORS.border,
+      timeVisible: true,
+      secondsVisible: false,
+      tickMarkFormatter: (time: Time, type: TickMarkType) => tickLabel(time, type, state.settings.displayZone, daily),
+    },
+    localization: {
+      timeFormatter: (time: Time) =>
+        daily ? formatDate(time as number) : `${formatDateTime(time as number, state.settings.displayZone)} ${zoneLabel(state.settings.displayZone)}`,
+    },
+  });
+
+  let series: ISeriesApi<'Candlestick'> | ISeriesApi<'Line'> | null = null;
+  let shown: BarSeries | null = null;
+  const byTime = new Map<number, Bar>();
+
+  const writeLegend = (bar: Bar | undefined) => {
+    legend.replaceChildren();
+    if (!bar || !shown) return;
+    const p = precision(shown.instrument);
+    if (shown.source.closeOnly) {
+      legend.append(h('span', {}, `Rate ${bar.close.toFixed(p)}`));
+      return;
+    }
+    const cls = bar.close >= bar.open ? 'up' : 'down';
+    for (const [k, v] of [['O', bar.open], ['H', bar.high], ['L', bar.low], ['C', bar.close]] as const) {
+      legend.append(h('span', { class: 'ohlc' }, h('span', { class: 'dim' }, k), h('span', { class: cls }, v.toFixed(p))));
+    }
+  };
+
+  chart.subscribeCrosshairMove((param) => {
+    const last = shown?.bars[shown.bars.length - 1];
+    writeLegend(param.time !== undefined ? (byTime.get(param.time as number) ?? last) : last);
+  });
+
+  const showEmpty = (instrument: InstrumentId, timeframe: Timeframe) => {
+    if (series) {
+      chart.removeSeries(series);
+      series = null;
+    }
+    shown = null;
+    byTime.clear();
+    legend.replaceChildren();
+    const available = hub.availableTimeframes(instrument);
+    const lines: (Node | string)[] = [h('p', { class: 'empty-title' }, `No ${timeframe} data for ${instrument}.`)];
+    if (available.length > 0) {
+      const row = h('p', {}, 'Loaded for this instrument: ');
+      for (const tf of available) {
+        const b = h('button', { type: 'button', class: 'chip' }, tf);
+        b.addEventListener('click', () => state.update({ timeframe: tf }));
+        row.append(b);
+      }
+      lines.push(row);
+      lines.push(h('p', { class: 'dim' }, 'The sample set has daily values only. Import a one-minute or hourly price file to see intraday charts.'));
+    } else {
+      lines.push(h('p', { class: 'dim' }, 'Nothing is loaded for this instrument. Import a price file to chart it.'));
+    }
+    const open = h('button', { type: 'button', class: 'button' }, 'Open Files');
+    open.addEventListener('click', () => ctx.run('FILES'));
+    lines.push(open);
+    empty.replaceChildren(...lines);
+    empty.hidden = false;
+    canvasHost.style.visibility = 'hidden';
+    footer.textContent = 'No data loaded for this view.';
+  };
+
+  const show = (data: BarSeries) => {
+    empty.hidden = true;
+    canvasHost.style.visibility = 'visible';
+    if (series) chart.removeSeries(series);
+    daily = data.timeframe === 'D1';
+    const p = precision(data.instrument);
+    const priceFormat = { type: 'price' as const, precision: p, minMove: 1 / 10 ** p };
+    byTime.clear();
+    for (const b of data.bars) byTime.set(b.time, b);
+    shown = data;
+
+    if (data.source.closeOnly) {
+      // One value per day: a line is honest, flat candles would not be.
+      const line = chart.addSeries(LineSeries, { color: COLORS.gold, lineWidth: 2, priceFormat });
+      line.setData(data.bars.map((b) => ({ time: b.time as UTCTimestamp, value: b.close })));
+      series = line;
+    } else {
+      const candles = chart.addSeries(CandlestickSeries, {
+        upColor: COLORS.up,
+        downColor: COLORS.down,
+        wickUpColor: COLORS.up,
+        wickDownColor: COLORS.down,
+        borderVisible: false,
+        priceFormat,
+      });
+      candles.setData(data.bars.map((b) => ({ time: b.time as UTCTimestamp, open: b.open, high: b.high, low: b.low, close: b.close })));
+      series = candles;
+    }
+    chart.applyOptions({ timeScale: { timeVisible: !daily } });
+    chart.timeScale().fitContent();
+    if (data.bars.length > 300) {
+      chart.timeScale().setVisibleLogicalRange({ from: data.bars.length - 220, to: data.bars.length + 5 });
+    }
+    const last = data.bars[data.bars.length - 1]!;
+    writeLegend(last);
+    const when = daily ? formatDate(last.time) : `${formatDateTime(data.source.asOf, state.settings.displayZone)} ${zoneLabel(state.settings.displayZone)}`;
+    const parts = [data.source.label, `${data.bars.length} bars`, `last ${when}`, formatAge(data.source.asOf)];
+    if (data.source.closeOnly) parts.push('daily reference rate, no range');
+    footer.textContent = parts.join(' · ');
+    footer.title = data.source.note ?? '';
+  };
+
+  let ticket = 0;
+  const reload = async () => {
+    const { instrument, timeframe } = state.settings;
+    const mine = ++ticket;
+    symbol.textContent = instrument;
+    symbol.classList.toggle('gold', instrument === 'XAUUSD');
+    const available = new Set(hub.availableTimeframes(instrument));
+    for (const [tf, b] of tfButtons) {
+      b.classList.toggle('active', tf === timeframe);
+      b.classList.toggle('unavailable', !available.has(tf));
+      b.title = available.has(tf) ? '' : 'No data loaded for this timeframe';
+      b.setAttribute('aria-pressed', String(tf === timeframe));
+    }
+    const data = await hub.getBars({ instrument, timeframe });
+    if (mine !== ticket) return; // a newer request overtook this one
+    if (data) show(data);
+    else showEmpty(instrument, timeframe);
+  };
+
+  const offSettings = state.onSettings(() => void reload());
+  const offData = hub.onChange(() => void reload());
+  void reload();
+
+  return {
+    destroy() {
+      ticket++;
+      offSettings();
+      offData();
+      chart.remove();
+    },
+  };
+};
