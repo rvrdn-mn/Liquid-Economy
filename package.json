@@ -1,0 +1,21 @@
+{
+  "name": "liquid-markets-desk",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Gold and forex terminal with living market visuals. For market context only, not financial advice.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "samples:fetch": "node scripts/fetch-reference-samples.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.7",
+    "vitest": "^5.1.0"
+  }
+}

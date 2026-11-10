@@ -1,0 +1,158 @@
+{
+  "description": "Daily reference rates, one observation per day (open = high = low = close). Not intraday market prices: no daily range, weekends omitted.",
+  "source": "Frankfurter blended central-bank reference rates",
+  "sourceUrl": "https://frankfurter.dev",
+  "licenceNote": "Frankfurter states its blended rates are its own calculation and free to use, including commercially, and that storing daily observations is encouraged.",
+  "retrievedAt": "2026-11-10T12:24:07.604Z",
+  "from": "2025-11-03",
+  "to": "2026-11-09",
+  "closeOnly": true,
+  "utcOffsetMinutes": 0,
+  "files": [
+    {
+      "path": "prices/XAUUSD_D1.csv",
+      "instrument": "XAUUSD",
+      "timeframe": "D1"
+    },
+    {
+      "path": "prices/EURAUD_D1.csv",
+      "instrument": "EURAUD",
+      "timeframe": "D1"
+    },
+    {
+      "path": "prices/EURCAD_D1.csv",
+      "instrument": "EURCAD",
+      "timeframe": "D1"
+    },
+    {
+      "path": "prices/EURCHF_D1.csv",
+      "instrument": "EURCHF",
+      "timeframe": "D1"
+    },
+    {
+      "path": "prices/EURGBP_D1.csv",
+      "instrument": "EURGBP",
+      "timeframe": "D1"
+    },
+    {
+      "path": "prices/EURJPY_D1.csv",
+      "instrument": "EURJPY",
+      "timeframe": "D1"
+    },
+    {
+      "path": "prices/EURNZD_D1.csv",
+      "instrument": "EURNZD",
+      "timeframe": "D1"
+    },
+    {
+      "path": "prices/EURUSD_D1.csv",
+      "instrument": "EURUSD",
+      "timeframe": "D1"
+    },
+    {
+      "path": "prices/GBPAUD_D1.csv",
+      "instrument": "GBPAUD",
+      "timeframe": "D1"
+    },
+    {
+      "path": "prices/GBPCAD_D1.csv",
+      "instrument": "GBPCAD",
+      "timeframe": "D1"
+    },
+    {
+      "path": "prices/GBPCHF_D1.csv",
+      "instrument": "GBPCHF",
+      "timeframe": "D1"
+    },
+    {
+      "path": "prices/GBPJPY_D1.csv",
+      "instrument": "GBPJPY",
+      "timeframe": "D1"
+    },
+    {
+      "path": "prices/GBPNZD_D1.csv",
+      "instrument": "GBPNZD",
+      "timeframe": "D1"
+    },
+    {
+      "path": "prices/GBPUSD_D1.csv",
+      "instrument": "GBPUSD",
+      "timeframe": "D1"
+    },
+    {
+      "path": "prices/AUDCAD_D1.csv",
+      "instrument": "AUDCAD",
+      "timeframe": "D1"
+    },
+    {
+      "path": "prices/AUDCHF_D1.csv",
+      "instrument": "AUDCHF",
+      "timeframe": "D1"
+    },
+    {
+      "path": "prices/AUDJPY_D1.csv",
+      "instrument": "AUDJPY",
+      "timeframe": "D1"
+    },
+    {
+      "path": "prices/AUDNZD_D1.csv",
+      "instrument": "AUDNZD",
+      "timeframe": "D1"
+    },
+    {
+      "path": "prices/AUDUSD_D1.csv",
+      "instrument": "AUDUSD",
+      "timeframe": "D1"
+    },
+    {
+      "path": "prices/NZDCAD_D1.csv",
+      "instrument": "NZDCAD",
+      "timeframe": "D1"
+    },
+    {
+      "path": "prices/NZDCHF_D1.csv",
+      "instrument": "NZDCHF",
+      "timeframe": "D1"
+    },
+    {
+      "path": "prices/NZDJPY_D1.csv",
+      "instrument": "NZDJPY",
+      "timeframe": "D1"
+    },
+    {
+      "path": "prices/NZDUSD_D1.csv",
+      "instrument": "NZDUSD",
+      "timeframe": "D1"
+    },
+    {
+      "path": "prices/USDCAD_D1.csv",
+      "instrument": "USDCAD",
+      "timeframe": "D1"
+    },
+    {
+      "path": "prices/USDCHF_D1.csv",
+      "instrument": "USDCHF",
+      "timeframe": "D1"
+    },
+    {
+      "path": "prices/USDJPY_D1.csv",
+      "instrument": "USDJPY",
+      "timeframe": "D1"
+    },
+    {
+      "path": "prices/CADCHF_D1.csv",
+      "instrument": "CADCHF",
+      "timeframe": "D1"
+    },
+    {
+      "path": "prices/CADJPY_D1.csv",
+      "instrument": "CADJPY",
+      "timeframe": "D1"
+    },
+    {
+      "path": "prices/CHFJPY_D1.csv",
+      "instrument": "CHFJPY",
+      "timeframe": "D1"
+    }
+  ]
+}
