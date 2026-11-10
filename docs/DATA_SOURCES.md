@@ -1,7 +1,7 @@
 # Data sources
 
 Phase 0 findings. Every source below was called and its own documentation
-read on **10 November 2026**. "Browser-callable" means the response carried
+read on **10 November 2026**, in two rounds. "Browser-callable" means the response carried
 `Access-Control-Allow-Origin: *` when requested with a foreign `Origin`
 header, so a static page on GitHub Pages can fetch it with no server.
 
@@ -13,12 +13,12 @@ The app is for market context only. It is not financial advice.
 | --- | --- | --- |
 | Price history, all instruments | File import (MT4/MT5 exports). Always works. | Age of the last bar in the file |
 | Gold, near-live | gold-api.com spot price | About 30 seconds |
-| Forex, near-live | **No suitable free feed found.** File import only. | n/a |
+| Forex, near-live | **No free feed cleared for a public demo.** File import only. Kraken works technically but needs written consent (see below). | n/a |
 | Forex and gold, daily | Frankfurter reference rates | Daily, labelled as reference rates |
 | US 10-year yield | US Treasury daily par yield curve | Daily |
-| Risk mood | Not settled. Load from a file. | Age of the file |
-| Calendar | Left out of version 1 | n/a |
-| News | Left out of version 1 | n/a |
+| Risk mood | Load from a file. Cboe's VIX file cannot be read by a browser. | Age of the file |
+| Calendar | No free source cleared. Open decision. | n/a |
+| News | Central-bank headline feeds exist but most need a scheduled copy step. Open decision. | n/a |
 
 ## Chosen sources
 
@@ -92,11 +92,34 @@ a paid individual plan. That is a scope decision, not part of version 1.
 header, so a browser cannot read it. Treasury publishes the same figure and
 is browser-callable.
 
+### Kraken public market data (forex candles)
+
+The closest thing to a free intraday forex feed. `api.kraken.com/0/public/OHLC`
+needs no key, is browser-callable, and returned hourly EUR/USD candles that
+agree with the other sources. It serves the last 720 candles per request at
+5 minute, 15 minute, 1 hour, 4 hour and daily intervals.
+
+Not used, for two reasons:
+
+- **Terms.** Kraken's global terms allow use of its content "only for your
+  own benefit", forbid making it "available to any third party", and forbid
+  developing "third-party applications that interact with Our Content
+  without our prior written consent". A public demo would need Kraken's
+  written permission.
+- **Coverage.** It lists 12 of the 28 pairs (AUD/JPY, AUD/USD, EUR/AUD,
+  EUR/CAD, EUR/CHF, EUR/GBP, EUR/JPY, EUR/USD, GBP/USD, USD/CAD, USD/CHF,
+  USD/JPY) and nothing with NZD. Its gold listings are gold-backed tokens,
+  not XAU/USD. Prices are trades on Kraken's own exchange, not the
+  interbank market.
+
+If Kraken gives consent, an adapter is a small job.
+
 ### Cboe VIX history (risk mood)
 
-The published file redirects to `cdn-api.cboe.com`, which this session could
-not reach, so neither browser access nor terms were verified. Until that is
-done, a risk-mood series is loaded from a file, as the spec allows.
+`cdn-api.cboe.com/.../VIX_History.csv` is reachable and current, but sends
+no CORS header, so a browser cannot read it. A risk-mood series is loaded
+from a file, as the spec allows. Cboe's terms for copying the file into the
+site were not read.
 
 ### Forex Factory weekly calendar export
 
@@ -108,9 +131,25 @@ check and could not be read. Not usable without a server.
 
 Returned a bot challenge (HTTP 403) instead of the feed. Not usable.
 
-No free calendar or headline source that a browser can call directly was
-found, so the Calendar and News panels are left out of version 1, as
-section 7 of the spec provides.
+### financecalendar.com (calendar)
+
+Needs a paid API key (USD 9.99 a year), which its docs say must stay on a
+server, and "sharing data with customers or other third parties requires a
+written licence". Not usable in a public static app.
+
+### Central-bank press feeds (news)
+
+Official RSS feeds were reachable for the Federal Reserve, ECB, Bank of
+England, Reserve Bank of Australia and Bank of Canada. Only the Bank of
+Canada feed is browser-callable. The others would need a scheduled job
+(for example a GitHub Action) that copies headline, date and link into the
+site. That keeps the app serverless at run time but is a change to the
+spec, and each bank's reuse terms still have to be read. The Bank of
+Japan, Swiss National Bank and Reserve Bank of New Zealand feeds were not
+tested.
+
+No free calendar source cleared for public display was found. Whether to
+add the scheduled copy step for news is an open decision.
 
 ### Intraday sample data
 
