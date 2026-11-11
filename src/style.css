@@ -116,3 +116,47 @@ td.wrap-mono { white-space: normal; }
 .dropzone.over { border-color: var(--accent); background: var(--raised); }
 .import-results p { margin: 0 0 4px; }
 .settings { margin-top: 4px; }
+
+/* Analysis panels */
+.panel-toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+.panel-body.scroll > div > .panel-empty { position: static; padding: 28px 12px; }
+.note { margin-top: 8px !important; max-width: 70ch; }
+.mono { font-family: var(--mono); font-size: 11px; }
+.spotlight { margin-bottom: 8px !important; }
+.spotlight-pair { font-size: 13px; font-weight: 600; }
+.meter { display: inline-block; position: relative; width: 90px; height: 7px; background: var(--raised); vertical-align: middle; margin-right: 6px; }
+.meter.wide { width: 100%; min-width: 60px; margin: 0; }
+.meter-cell { width: 35%; }
+.meter-fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent); opacity: 0.75; max-width: 100%; }
+.meter-fill.calm { opacity: 0.3; }
+.meter-mark { position: absolute; top: -2px; bottom: -2px; width: 1px; background: var(--text); }
+.score { font-family: var(--mono); display: inline-block; min-width: 3ch; text-align: right; }
+.strength td.ccy { font-weight: 600; color: var(--text); }
+.strength tr.edge td.ccy { color: var(--accent); }
+.spark { display: block; }
+.spark-line { fill: none; stroke: var(--accent); stroke-width: 1.2; }
+.spark-mid { stroke: var(--border); stroke-width: 1; }
+.vol .ratio.hot { color: var(--accent); font-weight: 600; }
+.grid { width: auto; }
+.grid th, .grid td { padding: 3px 6px; border: 1px solid var(--border); text-align: right; }
+.grid th { font-family: var(--mono); letter-spacing: 0; text-transform: none; font-size: 10.5px; }
+.grid td.cell { color: var(--text); }
+.grid td.flagged { outline: 1px solid var(--text); outline-offset: -2px; font-weight: 600; }
+.grid td.self { color: var(--dim); text-align: center; }
+.flag-list { margin: 0; padding-left: 16px; }
+.flag-list li { margin-bottom: 2px; }
+.session-layout { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-start; }
+.dial-host { flex: 0 1 300px; min-width: 200px; }
+.dial-info { flex: 1 1 220px; min-width: 200px; }
+.dial { width: 100%; height: auto; display: block; }
+.dial .heat { fill: var(--accent); stroke: var(--panel); stroke-width: 1; }
+.dial .heat.none { fill: var(--raised); fill-opacity: 1; }
+.dial .session-arc { fill: var(--raised); stroke: var(--border); stroke-width: 1; }
+.dial .session-arc.open { fill: var(--accent); fill-opacity: 0.35; stroke: var(--accent); }
+.dial .session-label { fill: var(--text); font: 8px var(--sans); text-anchor: middle; letter-spacing: 0.06em; text-transform: uppercase; pointer-events: none; }
+.dial .tick { stroke: var(--dim); stroke-width: 1; }
+.dial .hour-label { fill: var(--dim); font: 8.5px var(--mono); text-anchor: middle; }
+.dial .hand { stroke: var(--text); stroke-width: 1.2; }
+.dial .dial-time { fill: var(--text); font: 600 15px var(--mono); text-anchor: middle; }
+.dial .dial-zone { fill: var(--dim); font: 8.5px var(--mono); text-anchor: middle; }
+tr.open-row td { color: var(--accent); }

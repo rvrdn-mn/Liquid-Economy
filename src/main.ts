@@ -8,6 +8,10 @@ import { DataHub } from './data/hub';
 import { chartPanel } from './panels/chart';
 import { filesPanel } from './panels/files';
 import { helpPanel } from './panels/help';
+import { linksPanel } from './panels/links';
+import { sessionPanel } from './panels/session';
+import { strengthPanel } from './panels/strength';
+import { volatilityPanel } from './panels/volatility';
 import { placeholderPanel } from './panels/placeholder';
 import type { PanelContext, PanelFactory } from './panels/types';
 import { CommandBar } from './ui/commandBar';
@@ -19,7 +23,15 @@ const hub = new DataHub();
 hub.setDayRoll(state.settings.dayRoll);
 state.onSettings(() => hub.setDayRoll(state.settings.dayRoll));
 
-const built: Partial<Record<PanelCode, PanelFactory>> = { CHART: chartPanel, FILES: filesPanel, HELP: helpPanel };
+const built: Partial<Record<PanelCode, PanelFactory>> = {
+  CHART: chartPanel,
+  FILES: filesPanel,
+  HELP: helpPanel,
+  STR: strengthPanel,
+  VOL: volatilityPanel,
+  SES: sessionPanel,
+  LINK: linksPanel,
+};
 const factories = (code: PanelCode): PanelFactory => built[code] ?? placeholderPanel(code);
 
 let grid: Grid | null = null;

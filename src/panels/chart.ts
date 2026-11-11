@@ -191,7 +191,7 @@ export const chartPanel: PanelFactory = (body, footer, ctx) => {
     writeLegend(last);
     const when = daily ? formatDate(last.time) : `${formatDateTime(data.source.asOf, state.settings.displayZone)} ${zoneLabel(state.settings.displayZone)}`;
     const parts = [data.source.label, `${data.bars.length} bars`, `last ${when}`, formatAge(data.source.asOf)];
-    if (data.source.closeOnly) parts.push('daily reference rate, no range');
+    if (data.source.closeOnly) parts.push('one value per bar, no high or low');
     footer.textContent = parts.join(' · ');
     footer.title = data.source.note ?? '';
   };

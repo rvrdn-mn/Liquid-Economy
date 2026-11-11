@@ -209,6 +209,12 @@ listed; they are never repaired.
 A file of fine bars serves every coarser timeframe. A one-minute file gives
 M5, M15, H1, H4 and D1; the bars are built on request and labelled as built.
 
+Files for the seven dollar pairs are enough for all 28 pairs. A cross such
+as EURGBP is computed as EURUSD divided by GBPUSD on the bars both files
+share. Only the close can be computed, so a derived cross is labelled as
+derived, has no high or low, and is drawn as a line. A real file for a
+cross always takes precedence over the computed one.
+
 ### HistData.com files: confirmed with a real file
 
 `DAT_MT_XAUUSD_M1_202610.csv` (October 2026 gold, one-minute) was

@@ -74,7 +74,7 @@ export async function loadMany(source: BarSource, instruments: readonly Instrume
     missing,
     asOf,
     limitedBy,
-    sources: [...new Set(all.map((s) => s.source.label.replace(/^File: .*$/, 'Imported files').replace(/ \(built from .*$/, '')))],
+    sources: [...new Set(all.map((s) => s.source.label.replace(/^File: .*$/, 'Imported files').replace(/^Derived from .*$/, 'Crosses derived from imported files').replace(/ \(built from .*$/, '')))],
     anyCloseOnly: all.some((s) => s.source.closeOnly === true),
   };
 }

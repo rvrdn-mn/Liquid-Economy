@@ -2,17 +2,19 @@
  * The one place panels get data from. Panels never fetch or read files
  * themselves: they ask the hub and are told when something changed.
  *
- * Order of preference for bars: the user's imported files, then the
- * shipped sample set. If neither has the request the answer is null and
- * the panel shows an empty state.
+ * Order of preference for bars: the user's imported files; then a cross
+ * computed from the user's two dollar-pair files; then the shipped sample
+ * set. If none has the request the answer is null and the panel shows an
+ * empty state.
  */
 import { FileImportAdapter, type ImportedSeries, type ImportResult } from './fileAdapter';
 import { fileStore, type StoredFile } from './fileStore';
 import { isFileZone, type FileZone } from './fileZone';
+import { crossLegs, getDerivedCross } from './cross';
 import { decodeText } from './mtCsv';
 import { loadSamples, type SampleManifest } from './samples';
 import type { DayRoll } from './aggregate';
-import type { BarRequest, BarSeries, InstrumentId, Timeframe } from './types';
+import { TIMEFRAMES, type BarRequest, type BarSeries, type InstrumentId, type Timeframe } from './types';
 
 export interface ImportOutcome {
   fileName: string;
@@ -26,6 +28,8 @@ export class DataHub {
   private readonly files = new FileImportAdapter();
   private readonly samples = new FileImportAdapter();
   private readonly listeners = new Set<() => void>();
+  /** Crosses already computed for whole-series requests; emptied on any change. */
+  private readonly derived = new Map<string, BarSeries | null>();
   sampleManifest: SampleManifest | null = null;
   /** Problems found while starting up, for the Files panel to show. */
   startupErrors: string[] = [];
@@ -36,6 +40,7 @@ export class DataHub {
   }
 
   private changed(): void {
+    this.derived.clear();
     this.listeners.forEach((fn) => fn());
   }
 
@@ -116,7 +121,16 @@ export class DataHub {
   }
 
   async getBars(req: BarRequest): Promise<BarSeries | null> {
-    return (await this.files.getBars(req)) ?? (await this.samples.getBars(req));
+    const direct = await this.files.getBars(req);
+    if (direct) return direct;
+    const whole = req.from === undefined && req.to === undefined;
+    const cacheKey = `${req.instrument}|${req.timeframe}`;
+    let derived = whole ? this.derived.get(cacheKey) : undefined;
+    if (derived === undefined) {
+      derived = await getDerivedCross(this.files, req);
+      if (whole) this.derived.set(cacheKey, derived);
+    }
+    return derived ?? (await this.samples.getBars(req));
   }
 
   /** Timeframes that have data for an instrument, for the empty state. */
@@ -128,6 +142,12 @@ export class DataHub {
         adapter.servedTimeframes(s).forEach((tf) => out.add(tf));
       }
     }
-    return [...out];
+    const legs = crossLegs(instrument);
+    if (legs) {
+      const served = (id: InstrumentId) => new Set(this.files.list().filter((s) => s.instrument === id).flatMap((s) => this.files.servedTimeframes(s)));
+      const base = served(legs.base.instrument);
+      served(legs.quote.instrument).forEach((tf) => base.has(tf) && out.add(tf));
+    }
+    return TIMEFRAMES.filter((tf) => out.has(tf));
   }
 }

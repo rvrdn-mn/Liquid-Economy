@@ -9,15 +9,15 @@ no predictions, no AI calls at runtime, no server.
 
 ## Status
 
-Phases 0 and 1 are done: the data layer and the terminal shell. The
-analysis panels and the two signature views are not built yet.
+Phases 0 to 2 are done: the data layer, the terminal shell and the four
+core analysis panels. The two signature views are not built yet.
 
 | Phase | State |
 | --- | --- |
 | 0. Data check | Done: sources chosen, adapter interface, price-file importer, sample files |
 | 1. Shell | Done: panel grid, saved layout, command bar, chart from imported files |
-| 2. Core numbers | Next |
-| 3. Weather map | |
+| 2. Core numbers | Done: strength board, volatility, session clock, linked pairs |
+| 3. Weather map | Next |
 | 4. Gold | |
 | 5. Journal and feeds | |
 | 6. Polish and release | |
@@ -30,9 +30,12 @@ analysis panels and the two signature views are not built yet.
 - Unknown input shows the closest matches instead of an error.
 - Drag the line between panels to resize. The layout, settings and imported
   files are saved in your browser. Nothing is uploaded.
-- Out of the box the chart shows the daily sample set. For intraday charts,
-  open `FILES` and import a price file. A one-minute file serves every
-  timeframe.
+- Out of the box every panel runs on the daily sample set. For intraday
+  views, open `FILES` and import price files. A one-minute file serves
+  every timeframe, and files for the seven dollar pairs are enough for all
+  28 pairs.
+- `STR` strength board, `VOL` volatility, `SES` session clock, `LINK`
+  linked pairs. They follow the timeframe selected in the command bar.
 
 ## Run it
 
@@ -44,6 +47,8 @@ npm run build    # static site in dist/
 ```
 
 ## Data
+
+How each number is calculated: [docs/CALCULATIONS.md](docs/CALCULATIONS.md).
 
 See [docs/DATA_SOURCES.md](docs/DATA_SOURCES.md) for every source, its
 delay and its terms. In short: intraday price history comes from files you
@@ -58,7 +63,8 @@ are real published rates but they are not intraday market prices.
 
 ```
 src/data/      data layer: adapters, price-file importer, bar building, browser storage, hub
-src/app/       command language, layout tree, saved state (no drawing)
+src/calc/      calculations: pure functions, no data access, no drawing
+src/app/       command language, layout tree, saved state, analysis layer (no drawing)
 src/ui/        panel grid and command bar
 src/panels/    one file per panel; panels get data only from the hub
 tests/         unit tests
