@@ -248,3 +248,11 @@ input[type='datetime-local'] { background: var(--raised); border: 1px solid var(
   .panel { height: 440px; margin-bottom: 3px; }
   .statusbar { flex-wrap: wrap; height: auto; white-space: normal; }
 }
+
+/* Liquid Economy lab: visibly set apart from the analysis panels */
+.panel[data-panel='LAB'] { border-style: dashed; border-color: var(--gold); }
+.lab-banner { flex: none; padding: 5px 8px; border-bottom: 1px solid var(--border); color: var(--text); font-size: 11.5px; }
+.lab-slider { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.lab-slider input[type='range'] { width: 110px; accent-color: var(--gold); }
+.lab-table { flex: none; max-height: 34%; overflow: auto; padding: 4px 8px 0; }
+.lab-table tr.selected td { color: var(--gold); }
