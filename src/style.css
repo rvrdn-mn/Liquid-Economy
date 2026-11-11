@@ -194,3 +194,11 @@ input[type='datetime-local'] { background: var(--raised); border: 1px solid var(
 .drivers .link-r { font-weight: 600; color: var(--text); }
 .liq-chip.dir-with .liq-r { color: rgb(79, 200, 225); }
 .liq-chip.dir-against .liq-r { color: rgb(150, 132, 240); }
+
+/* Journal */
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 6px; margin-bottom: 10px; }
+.stat { border: 1px solid var(--border); background: var(--raised); padding: 5px 8px; }
+.stat-label { color: var(--dim); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; }
+.stat-value { font-family: var(--mono); font-size: 15px; }
+.two-up { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-bottom: 4px; }
+.replay-tag[hidden] { display: none; }

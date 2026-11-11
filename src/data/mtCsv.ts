@@ -188,6 +188,17 @@ function splitDateTime(s: string): { date: string; time?: string; offsetMinutes?
   return out;
 }
 
+/**
+ * One date-time cell to UTC epoch seconds: "2026.01.05 13:30", ISO text
+ * with or without an offset, or a unix number. Null when unreadable.
+ */
+export function parseDateTimeCell(cell: string, zone: FileZone): number | null {
+  const unix = parseUnixTime(cell);
+  if (unix !== null) return unix;
+  const dt = splitDateTime(cell);
+  return toEpochSeconds(dt.date, dt.time, dt.offsetMinutes ?? zone);
+}
+
 function parseNumber(cell: string | undefined, decimalComma: boolean): number {
   if (cell === undefined) return NaN;
   let s = cell.trim().replace(/^"|"$/g, '');

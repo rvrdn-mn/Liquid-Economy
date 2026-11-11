@@ -1,0 +1,6 @@
+{
+  "path": "demo-trades.csv",
+  "label": "Demo journal",
+  "note": "Invented example trades. Nobody placed them. Prices are the sample set's daily reference rates for those dates; times of day are illustrative. Import your own history to replace them.",
+  "utcOffsetMinutes": 0
+}

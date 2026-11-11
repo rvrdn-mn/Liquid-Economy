@@ -6,10 +6,10 @@
 import type { FileZone } from './fileZone';
 
 export interface StoredFile {
-  /** `${instrument}|${barSeconds}` for price files, `driver|risk` for a driver file. */
+  /** `${instrument}|${barSeconds}` for price files, `driver|risk` for a driver file, `journal` for trade history. */
   id: string;
   /** Absent for price files. */
-  kind?: 'driver';
+  kind?: 'driver' | 'journal';
   fileName: string;
   text: string;
   /** The clock the file was written in, as chosen at import. */

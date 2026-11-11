@@ -9,8 +9,10 @@ import {
   LineSeries,
   TickMarkType,
   createChart,
+  createSeriesMarkers,
   type IChartApi,
   type ISeriesApi,
+  type SeriesMarker,
   type Time,
   type UTCTimestamp,
 } from 'lightweight-charts';
@@ -70,7 +72,8 @@ export const chartPanel: PanelFactory = (body, footer, ctx) => {
     tfBar.append(b);
   }
   const legend = h('div', { class: 'chart-legend' });
-  const toolbar = h('div', { class: 'chart-toolbar' }, symbol, tfBar, legend);
+  const demoNote = h('span', { class: 'replay-tag', hidden: true, title: 'The trade marks on this chart are the invented demo journal, not real trades' }, 'DEMO TRADES');
+  const toolbar = h('div', { class: 'chart-toolbar' }, symbol, tfBar, demoNote, legend);
   const canvasHost = h('div', { class: 'chart-host' });
   const empty = h('div', { class: 'panel-empty', hidden: true });
   body.classList.add('chart-body');
@@ -124,6 +127,40 @@ export const chartPanel: PanelFactory = (body, footer, ctx) => {
     writeLegend(param.time !== undefined ? (byTime.get(param.time as number) ?? last) : last);
   });
 
+  /** Journal trades for this instrument as entry and exit marks on the bars they fall in. */
+  const tradeMarkers = (data: BarSeries): SeriesMarker<Time>[] => {
+    const bars = data.bars;
+    const first = bars[0]!.time;
+    const span = bars.length > 1 ? bars[bars.length - 1]!.time - bars[bars.length - 2]!.time : 0;
+    const end = bars[bars.length - 1]!.time + span;
+    /** Time of the bar a moment falls in: the last bar that starts at or before it. */
+    const barOf = (time: number): number | null => {
+      if (time < first || time > end) return null;
+      let lo = 0;
+      let hi = bars.length - 1;
+      while (lo < hi) {
+        const mid = (lo + hi + 1) >> 1;
+        if (bars[mid]!.time <= time) lo = mid;
+        else hi = mid - 1;
+      }
+      return bars[lo]!.time;
+    };
+    const out: SeriesMarker<Time>[] = [];
+    for (const t of hub.getTrades(data.instrument)) {
+      const entry = barOf(t.openTime);
+      const buy = t.side === 'buy';
+      if (entry !== null) {
+        out.push({ time: entry as UTCTimestamp, position: buy ? 'belowBar' : 'aboveBar', shape: buy ? 'arrowUp' : 'arrowDown', color: COLORS.accent, text: buy ? 'Buy' : 'Sell' });
+      }
+      const exit = t.closeTime === null ? null : barOf(t.closeTime);
+      if (exit !== null && t.result !== null) {
+        const won = t.result > 0;
+        out.push({ time: exit as UTCTimestamp, position: buy ? 'aboveBar' : 'belowBar', shape: 'circle', color: won ? COLORS.up : t.result < 0 ? COLORS.down : COLORS.text, text: `${t.result > 0 ? '+' : t.result < 0 ? '−' : ''}${Math.abs(t.result).toFixed(0)}` });
+      }
+    }
+    return out.sort((a, b) => (a.time as number) - (b.time as number));
+  };
+
   const showEmpty = (instrument: InstrumentId, timeframe: Timeframe) => {
     if (series) {
       chart.removeSeries(series);
@@ -133,6 +170,7 @@ export const chartPanel: PanelFactory = (body, footer, ctx) => {
     shownKey = '';
     byTime.clear();
     legend.replaceChildren();
+    demoNote.hidden = true;
     const available = hub.availableTimeframes(instrument);
     const lines: (Node | string)[] = [h('p', { class: 'empty-title' }, `No ${timeframe} data for ${instrument}.`)];
     if (available.length > 0) {
@@ -189,6 +227,9 @@ export const chartPanel: PanelFactory = (body, footer, ctx) => {
       candles.setData(data.bars.map((b) => ({ time: b.time as UTCTimestamp, open: b.open, high: b.high, low: b.low, close: b.close })));
       series = candles;
     }
+    const markers = tradeMarkers(data);
+    if (markers.length > 0 && series) createSeriesMarkers(series, markers);
+    demoNote.hidden = !(markers.length > 0 && hub.journal?.demo === true);
     chart.applyOptions({ timeScale: { timeVisible: !daily } });
     if (sameView && keepWidth !== null) {
       // Replay step on the same chart: keep the zoom and follow the newest bar.

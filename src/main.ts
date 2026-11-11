@@ -9,6 +9,7 @@ import { chartPanel } from './panels/chart';
 import { driversPanel } from './panels/drivers';
 import { filesPanel } from './panels/files';
 import { helpPanel } from './panels/help';
+import { journalPanel } from './panels/journal';
 import { linksPanel } from './panels/links';
 import { liquidPanel } from './panels/liquid';
 import { sessionPanel } from './panels/session';
@@ -39,6 +40,7 @@ const built: Partial<Record<PanelCode, PanelFactory>> = {
   WX: weatherPanel,
   DRV: driversPanel,
   LIQ: liquidPanel,
+  JRN: journalPanel,
 };
 const factories = (code: PanelCode): PanelFactory => built[code] ?? placeholderPanel(code);
 

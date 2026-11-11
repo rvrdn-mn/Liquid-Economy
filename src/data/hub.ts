@@ -14,6 +14,8 @@ import { crossLegs, getDerivedCross } from './cross';
 import { parseDailyCsv, parseTreasuryYields, treasuryUrl } from './dailyCsv';
 import { decodeText } from './mtCsv';
 import { loadSamples, type SampleManifest } from './samples';
+import { parseTradeHistory } from './tradeHistory';
+import type { Trade } from '../calc/journal';
 import type { DayRoll } from './aggregate';
 import { clampReplay, stepReplay, type Extent } from '../app/replay';
 import { TIMEFRAMES, type BarRequest, type BarSeries, type DailySeries, type InstrumentId, type Timeframe } from './types';
@@ -27,6 +29,18 @@ export interface ImportOutcome {
 }
 
 export type DriverId = 'yield' | 'risk';
+
+export interface Journal {
+  trades: Trade[];
+  label: string;
+  /** True for the invented example trades that ship with the app. */
+  demo: boolean;
+  note?: string;
+  /** Rows of the file that were not trades or could not be read. */
+  skipped: number;
+}
+
+const JOURNAL_FILE_ID = 'journal';
 
 const RISK_FILE_ID = 'driver|risk';
 const YIELD_CACHE_KEY = 'lmd.us10y.v1';
@@ -53,6 +67,9 @@ export class DataHub {
   private replayTimer: ReturnType<typeof setInterval> | null = null;
   /** Daily driver series that are not prices: the 10-year yield and a risk-mood measure. */
   private readonly drivers = new Map<DriverId, DailySeries>();
+  /** The trade history in use: the user's own, or the demo until they import one. */
+  journal: Journal | null = null;
+  private demoJournal: Journal | null = null;
 
   onChange(fn: () => void): () => void {
     this.listeners.add(fn);
@@ -85,8 +102,18 @@ export class DataHub {
       this.startupErrors.push(`Sample files could not be loaded: ${(err as Error).message}`);
     }
     await this.loadSavedYield();
+    await this.loadDemoJournal();
     try {
       for (const f of await fileStore.all()) {
+        if (f.kind === 'journal') {
+          try {
+            const parsed = parseTradeHistory(f.text, isFileZone(f.zone) ? f.zone : 0);
+            this.journal = { trades: parsed.trades, label: f.fileName, demo: false, skipped: parsed.skipped };
+          } catch (err) {
+            this.startupErrors.push(`Saved trade history ${f.fileName} could not be read: ${(err as Error).message}`);
+          }
+          continue;
+        }
         if (f.kind === 'driver') {
           try {
             if (f.id === RISK_FILE_ID) this.setRiskSeries(f.fileName, f.text, f.importedAt);
@@ -106,6 +133,65 @@ export class DataHub {
     }
     this.changed();
     void this.refreshYield();
+  }
+
+  // ------------------------------------------------------------ journal
+
+  private async loadDemoJournal(): Promise<void> {
+    try {
+      const res = await fetch('samples/journal/manifest.json');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const manifest = (await res.json()) as { path: string; label: string; note: string; utcOffsetMinutes: number };
+      const csv = await fetch(`samples/journal/${manifest.path}`);
+      if (!csv.ok) throw new Error(`HTTP ${csv.status}`);
+      const parsed = parseTradeHistory(await csv.text(), manifest.utcOffsetMinutes);
+      this.demoJournal = { trades: parsed.trades, label: manifest.label, demo: true, note: manifest.note, skipped: parsed.skipped };
+      this.journal ??= this.demoJournal;
+    } catch (err) {
+      this.startupErrors.push(`The demo journal could not be loaded: ${(err as Error).message}`);
+    }
+  }
+
+  /** Replace the journal with the user's own history. Throws with a plain reason if unreadable. */
+  async importJournal(file: File, zone: FileZone): Promise<{ journal: Journal; notSaved?: string }> {
+    const text = decodeText(await file.arrayBuffer());
+    const parsed = parseTradeHistory(text, zone);
+    const journal: Journal = { trades: parsed.trades, label: file.name, demo: false, skipped: parsed.skipped };
+    this.journal = journal;
+    let notSaved: string | undefined;
+    try {
+      await fileStore.put({ id: JOURNAL_FILE_ID, kind: 'journal', fileName: file.name, text, zone, importedAt: Math.floor(Date.now() / 1000) });
+    } catch (err) {
+      notSaved = (err as Error).message;
+    }
+    this.changed();
+    return notSaved === undefined ? { journal } : { journal, notSaved };
+  }
+
+  /** Drop the user's history and go back to the demo trades. */
+  async removeJournal(): Promise<void> {
+    this.journal = this.demoJournal;
+    try {
+      await fileStore.remove(JOURNAL_FILE_ID);
+    } catch {
+      /* gone from memory either way */
+    }
+    this.changed();
+  }
+
+  /**
+   * Trades as known at the current moment. In replay, trades opened later
+   * are left out, and a trade still running at the replay moment is shown
+   * as open, without its eventual exit or result.
+   */
+  getTrades(instrument?: InstrumentId): Trade[] {
+    let trades = this.journal?.trades ?? [];
+    if (instrument) trades = trades.filter((t) => t.instrument === instrument);
+    const at = this.replayTime;
+    if (at === null) return trades;
+    return trades
+      .filter((t) => t.openTime <= at)
+      .map((t) => (t.closeTime !== null && t.closeTime > at ? { ...t, closeTime: null, closePrice: null, result: null } : t));
   }
 
   // ------------------------------------------------------------ drivers
