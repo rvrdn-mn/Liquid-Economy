@@ -17,6 +17,20 @@ export interface Settings {
   dayRoll: DayRoll;
   /** The clock assumed for the next imported file. */
   importZone: FileZone;
+  /** Strength board lookback, in hours. Spec default 24. */
+  strengthLookbackHours: number;
+  /** Bars in the average true range. Spec default 14. */
+  atrPeriod: number;
+  /** Days of history the current volatility is compared with. Spec default 20. */
+  volatilityBaselineDays: number;
+  /** Days of history in the session profile. Spec default 30. */
+  sessionProfileDays: number;
+  /** Bars in the rolling correlation. Spec default 50. */
+  correlationWindow: number;
+  /** Two instruments are flagged as linked above this absolute correlation. Spec default 0.8. */
+  correlationThreshold: number;
+  /** Instruments in the linked-pairs grid. */
+  watchlist: InstrumentId[];
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -25,6 +39,13 @@ export const DEFAULT_SETTINGS: Settings = {
   displayZone: 'local',
   dayRoll: 'ny17',
   importZone: 'histdata',
+  strengthLookbackHours: 24,
+  atrPeriod: 14,
+  volatilityBaselineDays: 20,
+  sessionProfileDays: 30,
+  correlationWindow: 50,
+  correlationThreshold: 0.8,
+  watchlist: ['XAUUSD', 'EURUSD', 'GBPUSD', 'USDJPY', 'USDCHF', 'AUDUSD', 'USDCAD', 'NZDUSD'],
 };
 
 const SETTINGS_KEY = 'lmd.settings.v1';
@@ -47,7 +68,7 @@ function write(key: string, value: string): void {
 }
 
 export function parseSettings(json: string | null): Settings {
-  const out = { ...DEFAULT_SETTINGS };
+  const out: Settings = { ...DEFAULT_SETTINGS, watchlist: [...DEFAULT_SETTINGS.watchlist] };
   if (!json) return out;
   try {
     const s = JSON.parse(json) as Partial<Settings>;
@@ -56,6 +77,19 @@ export function parseSettings(json: string | null): Settings {
     if (s.displayZone === 'local' || s.displayZone === 'utc') out.displayZone = s.displayZone;
     if (s.dayRoll === 'ny17' || s.dayRoll === 'utc') out.dayRoll = s.dayRoll;
     if (isFileZone(s.importZone)) out.importZone = s.importZone;
+    const whole = (v: unknown, min: number, max: number): v is number => typeof v === 'number' && Number.isInteger(v) && v >= min && v <= max;
+    if (whole(s.strengthLookbackHours, 1, 24 * 366)) out.strengthLookbackHours = s.strengthLookbackHours;
+    if (whole(s.atrPeriod, 2, 200)) out.atrPeriod = s.atrPeriod;
+    if (whole(s.volatilityBaselineDays, 2, 366)) out.volatilityBaselineDays = s.volatilityBaselineDays;
+    if (whole(s.sessionProfileDays, 2, 366)) out.sessionProfileDays = s.sessionProfileDays;
+    if (whole(s.correlationWindow, 5, 1000)) out.correlationWindow = s.correlationWindow;
+    if (typeof s.correlationThreshold === 'number' && s.correlationThreshold > 0 && s.correlationThreshold < 1) {
+      out.correlationThreshold = s.correlationThreshold;
+    }
+    if (Array.isArray(s.watchlist)) {
+      const list = [...new Set(s.watchlist.filter((x): x is InstrumentId => typeof x === 'string' && isInstrument(x)))];
+      if (list.length >= 2) out.watchlist = list;
+    }
   } catch {
     /* damaged: defaults */
   }

@@ -71,6 +71,8 @@ export class FileImportAdapter implements DataAdapter {
   readonly id = 'file';
   readonly label = 'Imported files';
   private readonly store = new Map<string, ImportedSeries>();
+  /** Built bars, so that many panels asking for the same series build it once. */
+  private readonly built = new Map<string, Bar[]>();
   /** Where built four-hour and daily bars begin. A setting. */
   dayRoll: DayRoll = 'ny17';
 
@@ -106,6 +108,7 @@ export class FileImportAdapter implements DataAdapter {
 
     const series: ImportedSeries = { instrument, timeframe, barSeconds, bars: parsed.bars, source };
     this.store.set(key(instrument, barSeconds), series);
+    this.built.clear();
     return { series, parsed, serves: servedBy(series) };
   }
 
@@ -154,7 +157,17 @@ export class FileImportAdapter implements DataAdapter {
         .sort((x, y) => y.barSeconds - x.barSeconds)[0];
       if (!base) return null;
       const fine = to === Infinity ? base.bars : base.bars.filter((b) => b.time <= to);
-      bars = aggregateBars(fine, target, this.dayRoll).filter((b) => b.time >= from);
+      if (to === Infinity) {
+        const cacheKey = `${key(req.instrument, target)}|${this.dayRoll}`;
+        let whole = this.built.get(cacheKey);
+        if (!whole) {
+          whole = aggregateBars(fine, target, this.dayRoll);
+          this.built.set(cacheKey, whole);
+        }
+        bars = from === -Infinity ? whole : whole.filter((b) => b.time >= from);
+      } else {
+        bars = aggregateBars(fine, target, this.dayRoll).filter((b) => b.time >= from);
+      }
       source = { ...base.source, label: `${base.source.label} (built from ${base.timeframe} bars)` };
       asOf = fine.length > 0 ? fine[fine.length - 1]!.time : 0;
     }
@@ -163,10 +176,12 @@ export class FileImportAdapter implements DataAdapter {
   }
 
   remove(instrument: InstrumentId, barSeconds: number): boolean {
+    this.built.clear();
     return this.store.delete(key(instrument, barSeconds));
   }
 
   clear(): void {
+    this.built.clear();
     this.store.clear();
   }
 }

@@ -11,8 +11,16 @@ describe('parseSettings', () => {
 
   it('keeps valid saved values', () => {
     const saved = { instrument: 'EURJPY', timeframe: 'H4', displayZone: 'utc', dayRoll: 'utc', importZone: 120 };
-    expect(parseSettings(JSON.stringify(saved))).toEqual(saved);
+    expect(parseSettings(JSON.stringify(saved))).toMatchObject(saved);
     expect(parseSettings('{"importZone":"ny-close"}').importZone).toBe('ny-close');
+  });
+
+  it('keeps valid calculation settings and rejects impossible ones', () => {
+    const good = { strengthLookbackHours: 168, atrPeriod: 10, volatilityBaselineDays: 30, sessionProfileDays: 60, correlationWindow: 100, correlationThreshold: 0.7, watchlist: ['XAUUSD', 'EURUSD', 'GBPJPY'] };
+    expect(parseSettings(JSON.stringify(good))).toMatchObject(good);
+    const bad = { strengthLookbackHours: 0, atrPeriod: 1.5, volatilityBaselineDays: -3, sessionProfileDays: 'x', correlationWindow: 2, correlationThreshold: 1.2, watchlist: ['XAUUSD', 'NOPE'] };
+    expect(parseSettings(JSON.stringify(bad))).toEqual(DEFAULT_SETTINGS);
+    expect(parseSettings('{"watchlist":["EURUSD","EURUSD","USDJPY","BTCUSD"]}').watchlist).toEqual(['EURUSD', 'USDJPY']);
   });
 });
 
