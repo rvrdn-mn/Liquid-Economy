@@ -49,7 +49,7 @@ export const sessionPanel: PanelFactory = (body, footer, ctx) => {
   const draw = () => {
     const view = lastProfile;
     if (!view) return;
-    const now = Date.now() / 1000;
+    const now = hub.now();
     const zone = state.settings.displayZone;
     // Hours to add to a UTC hour to place it on the dial.
     const shift = zone === 'utc' ? 0 : -new Date().getTimezoneOffset() / 60;
@@ -103,7 +103,8 @@ export const sessionPanel: PanelFactory = (body, footer, ctx) => {
 
     // Text beside the dial.
     const nodes: Node[] = [];
-    nodes.push(h('p', {}, open.size > 0 ? `Open now: ${[...open].join(', ')}.` : 'No session is open now.'));
+    const when = hub.replayTime === null ? 'now' : 'at the replay moment';
+    nodes.push(h('p', {}, open.size > 0 ? `Open ${when}: ${[...open].join(', ')}.` : `No session is open ${when}.`));
     const list = h('table', {}, h('thead', {}, h('tr', {}, h('th', {}, 'Session'), h('th', {}, `Hours (${zoneLabel(zone)})`))));
     const tb = h('tbody', {});
     for (const s of hours) tb.append(h('tr', { class: open.has(s.name) ? 'open-row' : '' }, h('td', {}, `${s.name} · ${s.city}`), h('td', {}, `${clock(s.openUtc + shift)} to ${clock(s.closeUtc + shift)}`)));
@@ -127,7 +128,7 @@ export const sessionPanel: PanelFactory = (body, footer, ctx) => {
       nodes.push(h('p', {}, 'Busiest hours: ', h('span', { class: 'mono' }, top.map((x) => `${clock(x.hr + shift)} (${x.v.toFixed(3)}%)`).join(', ')), '.'));
       nodes.push(h('p', {}, 'Quietest hours: ', h('span', { class: 'mono' }, quiet.map((x) => `${clock(x.hr + shift)} (${x.v.toFixed(3)}%)`).join(', ')), '.'));
       nodes.push(h('p', { class: 'dim note' }, `Outer ring: brighter means a wider average high-to-low range in that hour, over the last ${state.settings.sessionProfileDays} days of data (${profile.daysCovered} covered). Hover a segment for its value.`));
-      footer.textContent = [view.sourceLabel ?? '', 'hourly ranges', view.asOf !== undefined ? formatAge(view.asOf) : ''].filter(Boolean).join(' · ');
+      footer.textContent = [view.sourceLabel ?? '', 'hourly ranges', hub.replayTime !== null ? 'replay' : view.asOf !== undefined ? formatAge(view.asOf) : ''].filter(Boolean).join(' · ');
     }
     info.replaceChildren(...nodes);
   };

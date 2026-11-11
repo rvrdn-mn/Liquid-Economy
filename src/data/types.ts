@@ -62,6 +62,8 @@ export interface SourceInfo {
   closeOnly?: boolean;
   /** Anything the user should know: delay, licence, time-zone assumption. */
   note?: string;
+  /** Set when the series was cut for replay: the moment being replayed. */
+  replayAt?: number;
 }
 
 export interface BarSeries {
@@ -91,9 +93,15 @@ export interface DailySeries {
 export interface BarRequest {
   instrument: InstrumentId;
   timeframe: Timeframe;
-  /** Inclusive UTC epoch seconds. Replay sets `to` to the replay clock. */
+  /** Inclusive UTC epoch seconds, compared with each bar's open time. */
   from?: number;
   to?: number;
+  /**
+   * Replay moment, UTC epoch seconds. Only what was known by then is
+   * returned: bars built from finer files end with a part-formed bar that
+   * holds nothing later; other bars are included only once finished.
+   */
+  asOf?: number;
 }
 
 export interface AdapterCapabilities {

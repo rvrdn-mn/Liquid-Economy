@@ -36,7 +36,7 @@ export function asOfText(loaded: Loaded, zone: Zone): string {
 /** Footer text: timeframe, moment, age, coverage and where the data came from. */
 export function loadedFooter(loaded: Loaded, zone: Zone, total: number): string {
   if (loaded.asOf === null) return 'No data loaded for this view.';
-  const parts = [loaded.timeframe, `as of ${asOfText(loaded, zone)}`, formatAge(loaded.asOf), `${loaded.series.size}/${total} instruments`, loaded.sources.join(' + ')];
+  const parts = [loaded.timeframe, `as of ${asOfText(loaded, zone)}`, loaded.replay ? 'replay' : formatAge(loaded.asOf), `${loaded.series.size}/${total} instruments`, loaded.sources.join(' + ')];
   if (loaded.limitedBy) parts.push(`held back by ${loaded.limitedBy}, whose data ends first`);
   return parts.join(' · ');
 }

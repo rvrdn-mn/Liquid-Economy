@@ -13,10 +13,11 @@ import { sessionPanel } from './panels/session';
 import { strengthPanel } from './panels/strength';
 import { volatilityPanel } from './panels/volatility';
 import { placeholderPanel } from './panels/placeholder';
+import { replayPanel } from './panels/replay';
 import type { PanelContext, PanelFactory } from './panels/types';
 import { CommandBar } from './ui/commandBar';
 import { Grid } from './ui/grid';
-import { h } from './ui/dom';
+import { formatDateTime, h, zoneLabel } from './ui/dom';
 
 const state = new AppState();
 const hub = new DataHub();
@@ -31,6 +32,7 @@ const built: Partial<Record<PanelCode, PanelFactory>> = {
   VOL: volatilityPanel,
   SES: sessionPanel,
   LINK: linksPanel,
+  RPL: replayPanel,
 };
 const factories = (code: PanelCode): PanelFactory => built[code] ?? placeholderPanel(code);
 
@@ -66,9 +68,20 @@ const renderSelection = () => {
 state.onSettings(renderSelection);
 renderSelection();
 
+// Replay must be impossible to mistake for current data: a marker in the top bar.
+const replayMark = h('button', { type: 'button', class: 'replay-mark', hidden: true, title: 'Replaying past data. Click to open the replay panel.' });
+replayMark.addEventListener('click', () => bar.run('RPL'));
+const renderReplayMark = () => {
+  const t = hub.replayTime;
+  replayMark.hidden = t === null;
+  if (t !== null) replayMark.textContent = `REPLAY ${formatDateTime(t, state.settings.displayZone)} ${zoneLabel(state.settings.displayZone)}`;
+};
+hub.onChange(renderReplayMark);
+state.onSettings(renderReplayMark);
+
 const desk = h('main', { class: 'desk' });
 document.getElementById('app')!.append(
-  h('header', { class: 'topbar' }, h('span', { class: 'brand' }, 'Liquid Markets Desk'), bar.el, selection),
+  h('header', { class: 'topbar' }, h('span', { class: 'brand' }, 'Liquid Markets Desk'), bar.el, replayMark, selection),
   desk,
   h('footer', { class: 'statusbar' }, h('span', {}, 'For market context only. Not financial advice.'), h('span', { class: 'dim' }, 'Press / for commands · HELP lists everything')),
 );

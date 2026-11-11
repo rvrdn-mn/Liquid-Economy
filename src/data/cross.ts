@@ -76,11 +76,13 @@ export async function getDerivedCross(source: Source, req: BarRequest): Promise<
   if (!a || !b) return null;
   const bars = deriveCrossBars(a.bars, legs.base, b.bars, legs.quote);
   if (bars.length === 0) return null;
+  const replayAt = a.source.replayAt ?? b.source.replayAt;
   return {
     instrument: req.instrument,
     timeframe: req.timeframe,
     bars,
     source: {
+      ...(replayAt !== undefined ? { replayAt } : {}),
       adapter: a.source.adapter,
       label: `Derived from ${legs.base.instrument} and ${legs.quote.instrument} files`,
       freshness: 'file',

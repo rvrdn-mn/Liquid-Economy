@@ -102,6 +102,7 @@ export const chartPanel: PanelFactory = (body, footer, ctx) => {
 
   let series: ISeriesApi<'Candlestick'> | ISeriesApi<'Line'> | null = null;
   let shown: BarSeries | null = null;
+  let shownKey = '';
   const byTime = new Map<number, Bar>();
 
   const writeLegend = (bar: Bar | undefined) => {
@@ -129,6 +130,7 @@ export const chartPanel: PanelFactory = (body, footer, ctx) => {
       series = null;
     }
     shown = null;
+    shownKey = '';
     byTime.clear();
     legend.replaceChildren();
     const available = hub.availableTimeframes(instrument);
@@ -157,6 +159,11 @@ export const chartPanel: PanelFactory = (body, footer, ctx) => {
   const show = (data: BarSeries) => {
     empty.hidden = true;
     canvasHost.style.visibility = 'visible';
+    const viewKey = `${data.instrument}|${data.timeframe}|${data.source.closeOnly === true}|${data.source.replayAt !== undefined}`;
+    const sameView = viewKey === shownKey && data.source.replayAt !== undefined;
+    const range = sameView ? chart.timeScale().getVisibleLogicalRange() : null;
+    const keepWidth = range ? Math.max(20, Math.round(range.to - range.from) - 5) : null;
+    shownKey = viewKey;
     if (series) chart.removeSeries(series);
     daily = data.timeframe === 'D1';
     const p = precision(data.instrument);
@@ -183,14 +190,19 @@ export const chartPanel: PanelFactory = (body, footer, ctx) => {
       series = candles;
     }
     chart.applyOptions({ timeScale: { timeVisible: !daily } });
-    chart.timeScale().fitContent();
-    if (data.bars.length > 300) {
-      chart.timeScale().setVisibleLogicalRange({ from: data.bars.length - 220, to: data.bars.length + 5 });
+    if (sameView && keepWidth !== null) {
+      // Replay step on the same chart: keep the zoom and follow the newest bar.
+      chart.timeScale().setVisibleLogicalRange({ from: data.bars.length - keepWidth, to: data.bars.length + 5 });
+    } else {
+      chart.timeScale().fitContent();
+      if (data.bars.length > 300) {
+        chart.timeScale().setVisibleLogicalRange({ from: data.bars.length - 220, to: data.bars.length + 5 });
+      }
     }
     const last = data.bars[data.bars.length - 1]!;
     writeLegend(last);
     const when = daily ? formatDate(last.time) : `${formatDateTime(data.source.asOf, state.settings.displayZone)} ${zoneLabel(state.settings.displayZone)}`;
-    const parts = [data.source.label, `${data.bars.length} bars`, `last ${when}`, formatAge(data.source.asOf)];
+    const parts = [data.source.label, `${data.bars.length} bars`, `last ${when}`, data.source.replayAt !== undefined ? 'replay' : formatAge(data.source.asOf)];
     if (data.source.closeOnly) parts.push('one value per bar, no high or low');
     footer.textContent = parts.join(' · ');
     footer.title = data.source.note ?? '';

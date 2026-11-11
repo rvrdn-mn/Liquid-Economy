@@ -79,3 +79,15 @@ export function aggregateBars(bars: readonly Bar[], targetSeconds: number, dayRo
   }
   return out;
 }
+
+/** Number of bars whose value of `key` is at most `limit`. Bars must be ascending. */
+export function countUpTo(bars: readonly Bar[], limit: number, key: (bar: Bar) => number = (b) => b.time): number {
+  let lo = 0;
+  let hi = bars.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (key(bars[mid]!) <= limit) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo;
+}

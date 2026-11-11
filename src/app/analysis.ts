@@ -41,6 +41,8 @@ export interface Loaded {
   sources: string[];
   /** True when any series is one value per bar with no range. */
   anyCloseOnly: boolean;
+  /** True when the data was cut at a replay moment. */
+  replay: boolean;
 }
 
 export async function loadMany(source: BarSource, instruments: readonly InstrumentId[], timeframe: Timeframe, to?: number): Promise<Loaded> {
@@ -51,14 +53,22 @@ export async function loadMany(source: BarSource, instruments: readonly Instrume
   let asOf: number | null = null;
   let newest: number | null = null;
   let limitedBy: InstrumentId | null = null;
-  results.forEach((s, i) => {
+  results.forEach((found, i) => {
     const instrument = instruments[i]!;
+    let s = found;
+    if (s && s.source.replayAt !== undefined) {
+      // Comparisons use finished bars only; the part-formed bar is for the chart.
+      const replayAt = s.source.replayAt;
+      const finished = s.bars.filter((b) => b.time + barSeconds <= replayAt);
+      s = finished.length === s.bars.length ? s : { ...s, bars: finished };
+    }
     if (!s || s.bars.length === 0) {
       missing.push(instrument);
       return;
     }
     series.set(instrument, s);
-    const end = s.bars[s.bars.length - 1]!.time + barSeconds;
+    // In replay, nothing is known past the replay moment, even mid-bar.
+    const end = Math.min(s.bars[s.bars.length - 1]!.time + barSeconds, s.source.replayAt ?? Infinity);
     if (asOf === null || end < asOf) {
       asOf = end;
       limitedBy = instrument;
@@ -76,6 +86,7 @@ export async function loadMany(source: BarSource, instruments: readonly Instrume
     limitedBy,
     sources: [...new Set(all.map((s) => s.source.label.replace(/^File: .*$/, 'Imported files').replace(/^Derived from .*$/, 'Crosses derived from imported files').replace(/ \(built from .*$/, '')))],
     anyCloseOnly: all.some((s) => s.source.closeOnly === true),
+    replay: all.some((s) => s.source.replayAt !== undefined),
   };
 }
 
@@ -161,7 +172,7 @@ export async function volatilityView(source: BarSource, instruments: readonly In
       tooShort.push(instrument);
       continue;
     }
-    rows.push({ instrument, reading, asOf: s.bars[s.bars.length - 1]!.time + loaded.barSeconds, closeOnly: s.source.closeOnly === true });
+    rows.push({ instrument, reading, asOf: Math.min(s.bars[s.bars.length - 1]!.time + loaded.barSeconds, s.source.replayAt ?? Infinity), closeOnly: s.source.closeOnly === true });
   }
   rows.sort((a, b) => b.reading.ratio - a.reading.ratio);
   return { loaded, rows, tooShort };

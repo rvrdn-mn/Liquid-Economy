@@ -73,3 +73,18 @@ export function volatilityReading(bars: readonly Bar[], period = 14, baselineDay
   if (baseline === 0) return null;
   return { current, baseline, ratio: current / baseline, baselineBars: n };
 }
+
+/** The bar with the widest true range as a percentage of its close; null for fewer than two bars. */
+export function widestBar(bars: readonly Bar[]): { bar: Bar; rangePercent: number } | null {
+  const tr = trueRanges(bars);
+  let best = -1;
+  let bestValue = -Infinity;
+  for (let i = 1; i < bars.length; i++) {
+    const value = (tr[i]! / bars[i]!.close) * 100;
+    if (value > bestValue) {
+      bestValue = value;
+      best = i;
+    }
+  }
+  return best === -1 ? null : { bar: bars[best]!, rangePercent: bestValue };
+}

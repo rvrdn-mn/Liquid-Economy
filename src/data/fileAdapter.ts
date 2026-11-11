@@ -19,7 +19,7 @@ import {
   type SourceInfo,
   type Timeframe,
 } from './types';
-import { aggregateBars, type DayRoll } from './aggregate';
+import { aggregateBars, countUpTo, windowStart, type DayRoll } from './aggregate';
 import { parseMtFilename, parseMtPriceCsv, MtCsvError, type ParsedPriceFile, type ParseOptions } from './mtCsv';
 
 /** One-minute files are accepted as a source but are not a chart timeframe. */
@@ -132,47 +132,101 @@ export class FileImportAdapter implements DataAdapter {
     return [...this.store.values()];
   }
 
+  /** The closest finer file that can be combined into `target`-second bars. */
+  private finerBase(instrument: InstrumentId, target: number): ImportedSeries | undefined {
+    return this.list()
+      .filter((s) => s.instrument === instrument && s.barSeconds < target && target % s.barSeconds === 0 && !s.source.closeOnly)
+      .sort((x, y) => y.barSeconds - x.barSeconds)[0];
+  }
+
+  /** All coarse bars built from a finer file, built once and reused. */
+  private builtWhole(base: ImportedSeries, target: number): Bar[] {
+    const cacheKey = `${key(base.instrument, target)}|${base.barSeconds}|${this.dayRoll}`;
+    let whole = this.built.get(cacheKey);
+    if (!whole) {
+      whole = aggregateBars(base.bars, target, this.dayRoll);
+      this.built.set(cacheKey, whole);
+    }
+    return whole;
+  }
+
+  /**
+   * Coarse bars as they stood at `asOf`: every finished bar, then one
+   * part-formed bar made only of fine bars that had finished by then.
+   */
+  private builtAsOf(base: ImportedSeries, target: number, asOf: number): { bars: Bar[]; lastFine: number } | null {
+    const known = countUpTo(base.bars, asOf - base.barSeconds);
+    if (known === 0) return null;
+    const lastFine = base.bars[known - 1]!.time;
+    const open = windowStart(lastFine, target, this.dayRoll);
+    let first = known - 1;
+    while (first > 0 && windowStart(base.bars[first - 1]!.time, target, this.dayRoll) === open) first--;
+    const whole = this.builtWhole(base, target);
+    const finished = whole.slice(0, countUpTo(whole, open - 1));
+    return { bars: finished.concat(aggregateBars(base.bars.slice(first, known), target, this.dayRoll)), lastFine };
+  }
+
   /**
    * Bars for a chart timeframe. Uses a file of exactly that timeframe when
    * one is loaded; otherwise builds the bars from the closest finer file.
-   * When built, `to` cuts the fine bars first, so the last coarse bar holds
-   * nothing from after `to`. Replay relies on that.
+   *
+   * With `asOf` (replay) nothing later than that moment is used. A finer
+   * file is preferred then, because it gives a true part-formed last bar;
+   * without one, only bars that had finished by `asOf` are returned.
    */
   async getBars(req: BarRequest): Promise<BarSeries | null> {
     const target = TIMEFRAME_SECONDS[req.timeframe];
     const from = req.from ?? -Infinity;
     const to = req.to ?? Infinity;
-
     const exact = this.store.get(key(req.instrument, target));
+    const base = this.finerBase(req.instrument, target);
+
     let bars: Bar[];
     let source: SourceInfo;
     let asOf: number;
-    if (exact) {
-      bars = exact.bars.filter((b) => b.time >= from && b.time <= to);
+    if (req.asOf !== undefined && base) {
+      const cut = this.builtAsOf(base, target, req.asOf);
+      if (!cut) return null;
+      bars = cut.bars;
+      source = { ...base.source, label: `${base.source.label} (built from ${base.timeframe} bars)` };
+      asOf = cut.lastFine;
+    } else if (exact) {
+      bars = req.asOf === undefined ? exact.bars : exact.bars.slice(0, countUpTo(exact.bars, req.asOf - target));
       source = exact.source;
       asOf = bars.length > 0 ? bars[bars.length - 1]!.time : 0;
-    } else {
-      const base = this.list()
-        .filter((s) => s.instrument === req.instrument && servedBy(s).includes(req.timeframe))
-        .sort((x, y) => y.barSeconds - x.barSeconds)[0];
-      if (!base) return null;
-      const fine = to === Infinity ? base.bars : base.bars.filter((b) => b.time <= to);
-      if (to === Infinity) {
-        const cacheKey = `${key(req.instrument, target)}|${this.dayRoll}`;
-        let whole = this.built.get(cacheKey);
-        if (!whole) {
-          whole = aggregateBars(fine, target, this.dayRoll);
-          this.built.set(cacheKey, whole);
-        }
-        bars = from === -Infinity ? whole : whole.filter((b) => b.time >= from);
-      } else {
-        bars = aggregateBars(fine, target, this.dayRoll).filter((b) => b.time >= from);
-      }
+    } else if (base) {
+      bars = this.builtWhole(base, target);
       source = { ...base.source, label: `${base.source.label} (built from ${base.timeframe} bars)` };
-      asOf = fine.length > 0 ? fine[fine.length - 1]!.time : 0;
+      asOf = base.bars[base.bars.length - 1]!.time;
+    } else {
+      return null;
+    }
+
+    if (from !== -Infinity || to !== Infinity) {
+      if (to !== Infinity && !exact && base && req.asOf === undefined) {
+        // Cut the fine bars first so the last coarse bar holds nothing after `to`.
+        const fine = base.bars.slice(0, countUpTo(base.bars, to));
+        bars = aggregateBars(fine, target, this.dayRoll);
+        asOf = fine.length > 0 ? fine[fine.length - 1]!.time : 0;
+      }
+      bars = bars.filter((b) => b.time >= from && b.time <= to);
+      if (exact && bars.length > 0) asOf = bars[bars.length - 1]!.time;
     }
     if (bars.length === 0) return null;
-    return { instrument: req.instrument, timeframe: req.timeframe, bars, source: { ...source, asOf } };
+    const out: SourceInfo = { ...source, asOf };
+    if (req.asOf !== undefined) out.replayAt = req.asOf;
+    return { instrument: req.instrument, timeframe: req.timeframe, bars, source: out };
+  }
+
+  /** First and last bar time across everything imported; null when empty. */
+  extent(): { first: number; last: number } | null {
+    let first = Infinity;
+    let last = -Infinity;
+    for (const s of this.store.values()) {
+      first = Math.min(first, s.bars[0]!.time);
+      last = Math.max(last, s.bars[s.bars.length - 1]!.time + s.barSeconds);
+    }
+    return first === Infinity ? null : { first, last };
   }
 
   remove(instrument: InstrumentId, barSeconds: number): boolean {
