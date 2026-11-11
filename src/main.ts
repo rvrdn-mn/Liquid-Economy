@@ -12,6 +12,7 @@ import { linksPanel } from './panels/links';
 import { sessionPanel } from './panels/session';
 import { strengthPanel } from './panels/strength';
 import { volatilityPanel } from './panels/volatility';
+import { weatherPanel } from './panels/weather';
 import { placeholderPanel } from './panels/placeholder';
 import { replayPanel } from './panels/replay';
 import type { PanelContext, PanelFactory } from './panels/types';
@@ -33,6 +34,7 @@ const built: Partial<Record<PanelCode, PanelFactory>> = {
   SES: sessionPanel,
   LINK: linksPanel,
   RPL: replayPanel,
+  WX: weatherPanel,
 };
 const factories = (code: PanelCode): PanelFactory => built[code] ?? placeholderPanel(code);
 

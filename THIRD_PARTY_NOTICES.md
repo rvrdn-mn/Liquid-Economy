@@ -13,6 +13,15 @@ library's attribution logo, which links there, switched on in every chart.
 
 Licence text: https://www.apache.org/licenses/LICENSE-2.0
 
+## Natural Earth map outlines
+
+The weather map's coastlines and country shapes come from Natural Earth
+(https://www.naturalearthdata.com/), which is in the public domain. They
+were taken from the `world-atlas` package by Mike Bostock (ISC licence) and
+reduced by `scripts/build-map.mjs` into `src/panels/weather/mapData.json`.
+`world-atlas` and `topojson-client` (ISC licence) are build-time tools and
+are not part of the app.
+
 ## Data
 
 Data sources, their delay and their terms are listed in

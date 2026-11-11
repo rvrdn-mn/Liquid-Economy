@@ -11,6 +11,7 @@
 import { correlationLinks, isFlagged, type Link } from '../calc/correlation';
 import { hourlyRangeProfile, type HourlyProfile } from '../calc/session';
 import { pairOf, strengthAt, type StrengthResult } from '../calc/strength';
+import { currencyVolatility, scoreChange, stormLevel, type CurrencyWeather } from '../calc/weather';
 import { volatilityReading, type VolatilityReading } from '../calc/volatility';
 import { FX_PAIRS } from '../data/instruments';
 import {
@@ -220,4 +221,37 @@ export async function sessionView(source: BarSource, instrument: InstrumentId, d
     return { instrument, profile: null, reason: `The data for ${instrument} has no high or low, so hourly ranges cannot be measured.` };
   }
   return { instrument, profile: hourlyRangeProfile(s.bars, days), sourceLabel: s.source.label, asOf: s.source.asOf };
+}
+
+// ------------------------------------------------------------------ weather
+
+export interface WeatherView {
+  strength: StrengthView;
+  /** One entry per currency, strongest first; empty when strength cannot be computed. */
+  currencies: CurrencyWeather[];
+  /** Bars the wind looks back over. */
+  windBars: number;
+  /** Pairs that had a volatility reading. */
+  volatilityPairs: number;
+}
+
+/** Bars of strength history the wind is measured over. */
+export const WIND_BARS = 6;
+
+export async function weatherView(source: BarSource, timeframe: Timeframe, lookbackHours: number, atrPeriod: number, baselineDays: number, windBars = WIND_BARS): Promise<WeatherView> {
+  const [strength, volatility] = await Promise.all([
+    strengthView(source, timeframe, lookbackHours, Math.max(40, windBars + 1)),
+    volatilityView(source, FX_PAIRS, timeframe, atrPeriod, baselineDays),
+  ]);
+  const view: WeatherView = { strength, currencies: [], windBars, volatilityPairs: volatility.rows.length };
+  if (!strength.now) return view;
+  const storm = currencyVolatility(new Map(volatility.rows.map((r) => [r.instrument, r.reading.ratio])));
+  view.currencies = strength.now.ranked.map((currency) => ({
+    currency,
+    pressure: strength.now!.score[currency],
+    wind: scoreChange(strength.history[currency], windBars),
+    storm: storm[currency],
+    level: stormLevel(storm[currency]),
+  }));
+  return view;
 }

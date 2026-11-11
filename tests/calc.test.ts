@@ -4,6 +4,8 @@ import { hourlyRangeProfile, sessionHoursUtc, sessionsOpenAt } from '../src/calc
 import { mean, pearson, percentChange } from '../src/calc/stats';
 import { changeOverLookback, closeAt, currencyStrength, pairOf, strengthAt } from '../src/calc/strength';
 import { atrPercentSeries, trueRanges, volatilityReading } from '../src/calc/volatility';
+import { contourSegments } from '../src/calc/contour';
+import { currencyVolatility, scoreChange, stormLevel } from '../src/calc/weather';
 import { FX_PAIRS } from '../src/data/instruments';
 import type { Bar } from '../src/data/types';
 
@@ -197,5 +199,52 @@ describe('sessions', () => {
     // Only the last day when the window is one day.
     expect(hourlyRangeProfile(bars, 1).averageRangePercent[8]).toBeCloseTo(4, 12);
     expect(hourlyRangeProfile([], 30).daysCovered).toBe(0);
+  });
+});
+
+describe('weather readings', () => {
+  it('a currency\'s storm is the average ratio of the pairs it is in', () => {
+    const r = currencyVolatility(new Map([['EURUSD', 2], ['USDJPY', 1], ['EURJPY', 1.5], ['XAUUSD', 9]]));
+    expect(r.EUR).toBeCloseTo(1.75, 12); // (2 + 1.5) / 2
+    expect(r.USD).toBeCloseTo(1.5, 12); // (2 + 1) / 2; gold is not a currency pair
+    expect(r.JPY).toBeCloseTo(1.25, 12);
+    expect(r.GBP).toBeNull();
+  });
+
+  it('wind is the change in score over the last N bars', () => {
+    expect(scoreChange([10, 20, 30, 70], 2)).toBe(50);
+    expect(scoreChange([10, 20, 30, 70], 3)).toBe(60);
+    expect(scoreChange([10, 20], 5)).toBeNull(); // history too short
+    expect(scoreChange([null, 20, 30], 2)).toBeNull();
+  });
+
+  it('names storm levels from the ratio', () => {
+    expect(stormLevel(0.8)).toBe('calm');
+    expect(stormLevel(1.09)).toBe('calm');
+    expect(stormLevel(1.1)).toBe('breezy');
+    expect(stormLevel(1.4)).toBe('stormy');
+    expect(stormLevel(1.8)).toBe('severe');
+    expect(stormLevel(null)).toBe('calm');
+  });
+});
+
+describe('contour lines', () => {
+  it('crosses a simple slope at the interpolated position', () => {
+    // Two columns: left 0, right 10. The level 2.5 lies a quarter of the way across.
+    const seg = contourSegments({ cols: 2, rows: 2, values: [0, 10, 0, 10] }, 2.5);
+    expect(seg).toEqual([0.25, 0, 0.25, 1]);
+  });
+
+  it('draws a closed loop around a single peak', () => {
+    const values = [0, 0, 0, 0, 10, 0, 0, 0, 0];
+    const seg = contourSegments({ cols: 3, rows: 3, values }, 5);
+    expect(seg.length / 4).toBe(4); // one segment in each of the four cells
+    // Every end point is half-way to the peak, at distance 0.5 from the centre.
+    for (let i = 0; i < seg.length; i += 2) expect(Math.hypot(seg[i]! - 1, seg[i + 1]! - 1)).toBeCloseTo(0.5, 12);
+  });
+
+  it('draws nothing when the level is outside the data', () => {
+    expect(contourSegments({ cols: 2, rows: 2, values: [1, 2, 3, 4] }, 9)).toEqual([]);
+    expect(contourSegments({ cols: 2, rows: 2, values: [1, 2, 3, 4] }, 0)).toEqual([]);
   });
 });

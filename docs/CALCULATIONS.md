@@ -67,6 +67,36 @@ position on the dial moves with each centre's daylight saving.
 linear relationship. If two instruments share fewer bars than the window
 needs, the cell shows a dash, not a number.
 
+## Weather map (WX)
+
+The same numbers as the strength board and the volatility panel, regrouped
+by currency and drawn as weather.
+
+- **Pressure** is the strength score, 0 to 100. Isobars ring each region,
+  H marks a strong currency (60 or more) and L a weak one (40 or less).
+- **Wind** is the change in that score over the last 6 bars. Streams flow
+  out of currencies losing strength and into those gaining it.
+- **Storm** is the average volatility ratio of the currency's seven pairs.
+  1.00× is its own usual level. From 1.1× it is "breezy", from 1.4× a
+  "storm", from 1.8× a "severe storm" with lightning.
+
+The exact readings are listed under the map. The motion is a stylised
+effect; it carries no information beyond those three numbers.
+
+## Replay (RPL)
+
+Replay sets one past moment for every panel. From then on each panel is
+given only what was known at that moment:
+
+- Bars built from a finer file (hourly bars from one-minute data, say) end
+  with a part-formed bar made only of the minutes that had finished.
+- Data with no finer source, such as the daily sample set, shows a bar
+  only once that bar has finished.
+- Comparisons between instruments use finished bars only.
+
+Each step moves one bar of the selected timeframe. A gold REPLAY marker
+stays in the top bar for as long as replay is on.
+
 ## Rules that apply to every panel
 
 - **One "as of" time.** Panels that compare instruments stop at the moment
@@ -94,3 +124,8 @@ needs, the cell shows a dash, not a number.
 - On real one-minute files for October 2026 (not in the repository), the
   EURUSD–GBPUSD hourly correlation, the EURUSD volatility ratio and the
   EURUSD busiest hours were recomputed the same way and agreed.
+- Replay is tested to never change a bar it has already shown and never to
+  include anything later than the replay moment.
+- Replaying the US jobs report of 2 October 2026 on five-minute bars, the
+  dollar's storm reading went from 0.96× at 12:00 UTC to 1.65× at 12:35
+  and 2.15× at 13:00.

@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { linksView, loadMany, sessionView, strengthView, volatilityView } from '../src/app/analysis';
+import { linksView, loadMany, sessionView, strengthView, volatilityView, weatherView } from '../src/app/analysis';
 import { DEFAULT_SETTINGS } from '../src/app/state';
 import { FileImportAdapter } from '../src/data/fileAdapter';
 import { FX_PAIRS, INSTRUMENTS } from '../src/data/instruments';
@@ -87,6 +87,22 @@ describe('panels on the shipped sample data', () => {
     expect(r('XAUUSD', 'USDJPY')).toBeCloseTo(-0.03374786, 7);
     expect(v.flagged.every((l) => Math.abs(l.r!) > 0.8)).toBe(true);
     expect(r('EURUSD', 'GBPUSD')! > 0.8).toBe(false); // 0.787 is close, but not flagged
+  });
+
+  it('weather map: pressure, wind over six bars, and storm per currency', async () => {
+    const v = await weatherView(samples, 'D1', 24, 14, 20);
+    const by = Object.fromEntries(v.currencies.map((c) => [c.currency, c]));
+    expect(v.currencies.map((c) => c.currency)).toEqual(['NZD', 'USD', 'JPY', 'GBP', 'CHF', 'EUR', 'CAD', 'AUD']);
+    expect(by.USD!.pressure).toBeCloseTo(95.0286, 3); // the strength board's number
+    const wind = { USD: 80.722, EUR: 20.827, GBP: -8.5157, JPY: 42.9828, CHF: -34.5349, AUD: 0, CAD: -24.4701, NZD: 55.5041 };
+    const storm = { USD: 1.1672, EUR: 1.101777, GBP: 1.144452, JPY: 1.149087, CHF: 1.064084, AUD: 1.183273, CAD: 1.096885, NZD: 1.277272 };
+    for (const c of Object.keys(wind) as (keyof typeof wind)[]) {
+      expect(by[c]!.wind, `${c} wind`).toBeCloseTo(wind[c], 3);
+      expect(by[c]!.storm, `${c} storm`).toBeCloseTo(storm[c], 5);
+    }
+    expect(by.NZD!.level).toBe('breezy');
+    expect(by.CHF!.level).toBe('calm');
+    expect(v.volatilityPairs).toBe(28);
   });
 
   it('session profile refuses data that has no range', async () => {

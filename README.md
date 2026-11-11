@@ -9,16 +9,16 @@ no predictions, no AI calls at runtime, no server.
 
 ## Status
 
-Phases 0 to 2 are done: the data layer, the terminal shell and the four
-core analysis panels. The two signature views are not built yet.
+Phases 0 to 3 are done: the data layer, the terminal shell, the four core
+analysis panels, the weather map and replay. The liquid machine is next.
 
 | Phase | State |
 | --- | --- |
 | 0. Data check | Done: sources chosen, adapter interface, price-file importer, sample files |
 | 1. Shell | Done: panel grid, saved layout, command bar, chart from imported files |
 | 2. Core numbers | Done: strength board, volatility, session clock, linked pairs |
-| 3. Weather map | Next |
-| 4. Gold | |
+| 3. Weather map | Done: weather map and replay across every panel |
+| 4. Gold | Next |
 | 5. Journal and feeds | |
 | 6. Polish and release | |
 
@@ -36,6 +36,10 @@ core analysis panels. The two signature views are not built yet.
   28 pairs.
 - `STR` strength board, `VOL` volatility, `SES` session clock, `LINK`
   linked pairs. They follow the timeframe selected in the command bar.
+- `WX` weather map: strength as pressure, its change as wind, volatility
+  as storms.
+- `RPL` replay: pick a past moment, then step or play forward. Every panel
+  shows only what was known at that moment.
 
 ## Run it
 

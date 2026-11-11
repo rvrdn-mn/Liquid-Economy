@@ -170,3 +170,20 @@ tr.open-row td { color: var(--accent); }
 .button.primary { border-color: var(--accent); color: var(--accent); }
 .button:disabled { opacity: 0.4; cursor: default; }
 input[type='datetime-local'] { background: var(--raised); border: 1px solid var(--border); padding: 2px 4px; font-family: var(--mono); color-scheme: dark; }
+
+/* Weather map */
+.weather-body { display: flex; flex-direction: column; }
+.wx-toolbar { flex: none; margin: 0; padding: 4px 8px; border-bottom: 1px solid var(--border); }
+.wx-host { flex: 1; min-height: 120px; position: relative; overflow: hidden; background: #080b10; }
+.wx-host[hidden], .wx-empty[hidden] { display: none; }
+.wx-layer { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.wx-empty { flex: 1; position: relative; }
+.wx-readout { flex: none; display: flex; flex-wrap: wrap; gap: 4px; padding: 5px 8px 0; }
+.wx-chip { display: inline-flex; gap: 6px; align-items: baseline; padding: 1px 6px; border: 1px solid var(--border); background: var(--raised); font-family: var(--mono); font-size: 10.5px; white-space: nowrap; }
+.wx-ccy { font-weight: 600; }
+.wx-pressure { color: var(--accent); }
+.wx-storm { color: var(--dim); }
+.wx-chip.level-breezy .wx-storm { color: var(--text); }
+.wx-chip.level-stormy .wx-storm, .wx-chip.level-severe .wx-storm { color: var(--gold); }
+.wx-chip.level-severe { border-color: var(--gold); }
+.wx-legend { flex: none; margin: 0 !important; padding: 4px 8px 5px; font-size: 10.5px; }
