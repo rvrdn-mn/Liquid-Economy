@@ -42,7 +42,36 @@ export const filesPanel: PanelFactory = (body, footer, ctx) => {
     h('p', { class: 'dim' }, 'The trading day setting affects four-hour and daily bars built from finer files.'),
   );
 
-  body.append(drop, results, h('h3', {}, 'Your files'), imported, h('h3', {}, 'Sample set'), samples, settings);
+  const riskInput = h('input', { type: 'file', accept: '.csv,.txt', class: 'visually-hidden', id: 'risk-input' });
+  const riskChoose = h('label', { class: 'button', for: 'risk-input' }, 'Choose risk-mood file');
+  const riskStatus = h('div', {});
+  const riskResult = h('p', { 'aria-live': 'polite' });
+  const yieldStatus = h('p', {});
+  const driverBox = h(
+    'div',
+    {},
+    h('h3', {}, 'Gold driver data'),
+    yieldStatus,
+    riskStatus,
+    h('p', {}, riskChoose, riskInput),
+    riskResult,
+    h('p', { class: 'dim' }, 'Risk mood is any daily "date, value" file, for example a volatility index or share index history. It stays in this browser.'),
+  );
+  riskInput.addEventListener('change', async () => {
+    const file = riskInput.files?.[0];
+    riskInput.value = '';
+    if (!file) return;
+    try {
+      const { series, notSaved } = await hub.importRiskFile(file);
+      riskResult.className = notSaved ? 'warn' : 'ok';
+      riskResult.textContent = `${file.name}: ${series.points.length} daily values.${notSaved ? ` Loaded for this visit only; it could not be saved (${notSaved}).` : ''}`;
+    } catch (err) {
+      riskResult.className = 'error';
+      riskResult.textContent = `${file.name}: ${(err as Error).message}`;
+    }
+  });
+
+  body.append(drop, results, h('h3', {}, 'Your files'), imported, driverBox, h('h3', {}, 'Sample set'), samples, settings);
 
   const handle = async (files: File[]) => {
     if (files.length === 0) return;
@@ -115,6 +144,19 @@ export const filesPanel: PanelFactory = (body, footer, ctx) => {
       }
       table.append(tbody);
       imported.replaceChildren(table);
+    }
+
+    const yld = hub.driverInfo('yield');
+    yieldStatus.textContent = yld
+      ? `10-year yield: ${yld.points.length} days to ${formatDate(yld.source.asOf)}, ${yld.source.label}.${yld.source.note ? ' ' + yld.source.note : ''}`
+      : '10-year yield: not loaded.';
+    const risk = hub.driverInfo('risk');
+    if (risk) {
+      const remove = h('button', { type: 'button', class: 'chip' }, 'Remove');
+      remove.addEventListener('click', () => void hub.removeRiskFile());
+      riskStatus.replaceChildren(h('p', {}, `${risk.label}: ${risk.points.length} days, ${formatDate(risk.points[0]!.time)} to ${formatDate(risk.source.asOf)} `, remove));
+    } else {
+      riskStatus.replaceChildren(h('p', { class: 'dim' }, 'Risk mood: none loaded.'));
     }
 
     const sampleList = hub.sampleFiles();

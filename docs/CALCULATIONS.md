@@ -67,6 +67,41 @@ position on the dial moves with each centre's daylight saving.
 linear relationship. If two instruments share fewer bars than the window
 needs, the cell shows a dash, not a number.
 
+## Gold drivers (DRV) and the liquid machine (LIQ)
+
+For each driver, the correlation of gold's daily percentage change with
+the driver's daily change, over the last 30 days both have.
+
+- **US dollar.** The app's own dollar strength, so no extra feed is needed.
+  Each day's figure is the dollar's average move against the other seven
+  majors, the number behind its strength score with a one-day lookback.
+  Those daily moves are compounded into an index that starts at 100. The
+  spec names the strength score itself; the score is rescaled to 0-100
+  every day, so it has no meaningful day-to-day return, and the average
+  move behind it is used instead.
+- **US 10-year yield.** From the US Treasury. A yield is already a
+  percentage, so its daily change is the difference in percentage points.
+- **Risk mood.** A daily series you import, such as a volatility index.
+  Its daily change is a percentage.
+
+The table shows each driver's latest value, its change on the day, the
+link with gold, whether it has moved with gold or against it, and how the
+link changed since the previous day.
+
+The liquid machine draws the same readings:
+
+- **Pipe thickness** grows in step with the size of the link, whatever its
+  sign.
+- **Pipe colour** is the direction: blue for moving with gold, violet for
+  moving against it. A driver with no reading has a thin dashed pipe.
+- **Tank level** is where the latest value sits between its 30-day low and
+  high: empty at the low, full at the high.
+
+All drivers stop at gold's last day, so nothing is compared across
+different dates. If your imported gold files cover fewer days than the
+window needs, the sample set's longer history is used and the footer says
+so.
+
 ## Weather map (WX)
 
 The same numbers as the strength board and the volatility panel, regrouped
@@ -126,6 +161,9 @@ stays in the top bar for as long as replay is on.
   EURUSD busiest hours were recomputed the same way and agreed.
 - Replay is tested to never change a bar it has already shown and never to
   include anything later than the replay moment.
+- The gold-driver links on the sample data were recomputed separately at
+  three moments (9 November, 14 August and 20 March 2026) and agreed,
+  including the yield's link changing sign between them.
 - Replaying the US jobs report of 2 October 2026 on five-minute bars, the
   dollar's storm reading went from 0.96× at 12:00 UTC to 1.65× at 12:35
   and 2.15× at 13:00.

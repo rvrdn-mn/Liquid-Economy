@@ -136,7 +136,10 @@ describe('panels on the shipped sample data', () => {
       expect(yld!.link!.r).toBeCloseTo(-0.133681, 5);
       expect(yld!.link!.rPrevious).toBeCloseTo(-0.134189, 5);
       expect(yld!.link!.n).toBe(254);
-      expect(yld!.latest).toMatchObject({ value: 4.98 }); // the yield file runs a day past the gold sample
+      // The yield file runs a day past the gold sample (4.98 on 10 Nov); that day is held back.
+      expect(yld!.latest!.value).toBe(4.88);
+      expect(yld!.latest!.change).toBeCloseTo(0.02, 9);
+      expect(yld!.level).toBeCloseTo(0.085106, 5);
       expect(risk).toMatchObject({ available: false, direction: 'none', link: null });
       expect(risk!.reason).toMatch(/Import a daily/);
       expect(v.gold!.level).toBeCloseTo(0.631071, 5);

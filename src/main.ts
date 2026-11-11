@@ -6,9 +6,11 @@ import type { PanelCode } from './app/panels';
 import { AppState } from './app/state';
 import { DataHub } from './data/hub';
 import { chartPanel } from './panels/chart';
+import { driversPanel } from './panels/drivers';
 import { filesPanel } from './panels/files';
 import { helpPanel } from './panels/help';
 import { linksPanel } from './panels/links';
+import { liquidPanel } from './panels/liquid';
 import { sessionPanel } from './panels/session';
 import { strengthPanel } from './panels/strength';
 import { volatilityPanel } from './panels/volatility';
@@ -35,6 +37,8 @@ const built: Partial<Record<PanelCode, PanelFactory>> = {
   LINK: linksPanel,
   RPL: replayPanel,
   WX: weatherPanel,
+  DRV: driversPanel,
+  LIQ: liquidPanel,
 };
 const factories = (code: PanelCode): PanelFactory => built[code] ?? placeholderPanel(code);
 

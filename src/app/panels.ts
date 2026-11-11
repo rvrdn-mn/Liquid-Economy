@@ -23,8 +23,8 @@ export const PANELS: Record<PanelCode, PanelInfo> = {
   LINK: { code: 'LINK', title: 'Linked pairs', description: 'Correlation grid for the watchlist' },
   WX: { code: 'WX', title: 'Weather map', description: 'Currency strength drawn as weather' },
   RPL: { code: 'RPL', title: 'Replay', description: 'Rewind every panel to a past time' },
-  DRV: { code: 'DRV', title: 'Gold drivers', description: 'How the dollar, yields and risk mood move with gold', pending: 'Built in phase 4.' },
-  LIQ: { code: 'LIQ', title: 'Liquid machine', description: 'Tanks and pipes showing what is moving gold', pending: 'Built in phase 4.' },
+  DRV: { code: 'DRV', title: 'Gold drivers', description: 'How the dollar, yields and risk mood move with gold' },
+  LIQ: { code: 'LIQ', title: 'Liquid machine', description: 'Tanks and pipes showing what is moving gold' },
   JRN: { code: 'JRN', title: 'Journal', description: 'Trade history, statistics and chart markers', pending: 'Built in phase 5.' },
   NEWS: { code: 'NEWS', title: 'News', description: 'Central-bank headlines', pending: 'Built in phase 5.' },
   CAL: {

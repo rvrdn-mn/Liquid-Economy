@@ -79,3 +79,53 @@ export function svg<K extends keyof SVGElementTagNameMap>(tag: K, attrs: Record<
   el.append(...children);
   return el;
 }
+
+/**
+ * Runs a canvas animation only while it can be seen: the host is on
+ * screen, the tab is visible, and the system has not asked for reduced
+ * motion. Otherwise `still` draws one frame and nothing keeps running.
+ */
+export function animator(host: Element, opts: { ready: () => boolean; frame: (now: number, dt: number) => void; still: () => void }) {
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+  let running = false;
+  let handle = 0;
+  let last = 0;
+  let onScreen = true;
+  const tick = (now: number) => {
+    if (!running) return;
+    const dt = Math.min(0.05, (now - last) / 1000 || 0.016);
+    last = now;
+    opts.frame(now, dt);
+    handle = requestAnimationFrame(tick);
+  };
+  const sync = () => {
+    const want = opts.ready() && onScreen && document.visibilityState === 'visible' && !reduced.matches;
+    if (want && !running) {
+      running = true;
+      last = performance.now();
+      handle = requestAnimationFrame(tick);
+    } else if (!want && running) {
+      running = false;
+      cancelAnimationFrame(handle);
+    }
+    if (!want && opts.ready()) opts.still();
+  };
+  const seen = new IntersectionObserver((entries) => {
+    onScreen = entries.some((e) => e.isIntersecting);
+    sync();
+  });
+  seen.observe(host);
+  document.addEventListener('visibilitychange', sync);
+  reduced.addEventListener('change', sync);
+  return {
+    sync,
+    isRunning: () => running,
+    stop() {
+      running = false;
+      cancelAnimationFrame(handle);
+      seen.disconnect();
+      document.removeEventListener('visibilitychange', sync);
+      reduced.removeEventListener('change', sync);
+    },
+  };
+}

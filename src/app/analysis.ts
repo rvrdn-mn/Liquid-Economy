@@ -344,6 +344,9 @@ export async function driversView(source: DriverSource, window: number): Promise
   const gold = dailyPoints(goldSeries);
 
   const row = (id: DriverId, label: string, unit: string, kind: ChangeKind, points: Point[] | null, sourceLabel: string | undefined, missing: string, note?: string): DriverRow => {
+    // One shared "as of" day: a driver's later values are left out until gold has that day too.
+    const lastGold = gold[gold.length - 1]?.time ?? -Infinity;
+    points = points ? points.filter((p) => p.time <= lastGold) : null;
     if (!points || points.length < 2) {
       return { id, label, unit, kind, available: false, reason: missing, latest: null, level: null, link: null, direction: 'none' };
     }

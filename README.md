@@ -9,8 +9,9 @@ no predictions, no AI calls at runtime, no server.
 
 ## Status
 
-Phases 0 to 3 are done: the data layer, the terminal shell, the four core
-analysis panels, the weather map and replay. The liquid machine is next.
+Phases 0 to 4 are done: the data layer, the terminal shell, the four core
+analysis panels, the weather map, replay, the gold drivers and the liquid
+machine. Journal and live feeds are next.
 
 | Phase | State |
 | --- | --- |
@@ -18,8 +19,8 @@ analysis panels, the weather map and replay. The liquid machine is next.
 | 1. Shell | Done: panel grid, saved layout, command bar, chart from imported files |
 | 2. Core numbers | Done: strength board, volatility, session clock, linked pairs |
 | 3. Weather map | Done: weather map and replay across every panel |
-| 4. Gold | Next |
-| 5. Journal and feeds | |
+| 4. Gold | Done: gold drivers table and the liquid machine |
+| 5. Journal and feeds | Next |
 | 6. Polish and release | |
 
 ## Using it
@@ -40,6 +41,9 @@ analysis panels, the weather map and replay. The liquid machine is next.
   as storms.
 - `RPL` replay: pick a past moment, then step or play forward. Every panel
   shows only what was known at that moment.
+- `DRV` gold drivers and `LIQ` liquid machine: how the dollar, the US
+  10-year yield and a risk-mood series have moved with gold. Risk mood is a
+  daily file you import in `FILES`.
 
 ## Run it
 

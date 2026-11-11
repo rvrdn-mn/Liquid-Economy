@@ -169,6 +169,7 @@ tr.open-row td { color: var(--accent); }
 .replay-slider { width: 100%; margin: 2px 0 8px; accent-color: var(--accent); }
 .button.primary { border-color: var(--accent); color: var(--accent); }
 .button:disabled { opacity: 0.4; cursor: default; }
+.button[hidden] { display: none; }
 input[type='datetime-local'] { background: var(--raised); border: 1px solid var(--border); padding: 2px 4px; font-family: var(--mono); color-scheme: dark; }
 
 /* Weather map */
@@ -187,3 +188,9 @@ input[type='datetime-local'] { background: var(--raised); border: 1px solid var(
 .wx-chip.level-stormy .wx-storm, .wx-chip.level-severe .wx-storm { color: var(--gold); }
 .wx-chip.level-severe { border-color: var(--gold); }
 .wx-legend { flex: none; margin: 0 !important; padding: 4px 8px 5px; font-size: 10.5px; }
+
+/* Gold drivers and liquid machine */
+.drivers tr.gold-row td { border-bottom-color: var(--gold); }
+.drivers .link-r { font-weight: 600; color: var(--text); }
+.liq-chip.dir-with .liq-r { color: rgb(79, 200, 225); }
+.liq-chip.dir-against .liq-r { color: rgb(150, 132, 240); }

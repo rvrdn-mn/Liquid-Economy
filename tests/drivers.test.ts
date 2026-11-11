@@ -125,3 +125,33 @@ describe('daily series files', () => {
     expect(() => parseDailyCsv('date,close\nhello,world')).toThrow(/No rows/);
   });
 });
+
+import { fillFraction, flowSpeed, pipeThickness, PIPE_MAX, PIPE_MIN } from '../src/panels/liquid/model';
+
+describe('liquid machine shapes', () => {
+  it('makes a pipe thicker as the link gets stronger, in either direction', () => {
+    const h = 1000;
+    expect(pipeThickness(0, h)).toBeCloseTo(PIPE_MIN * h, 9);
+    expect(pipeThickness(1, h)).toBeCloseTo(PIPE_MAX * h, 9);
+    expect(pipeThickness(-1, h)).toBeCloseTo(PIPE_MAX * h, 9);
+    expect(pipeThickness(0.5, h)).toBeCloseTo(((PIPE_MIN + PIPE_MAX) / 2) * h, 9);
+    expect(pipeThickness(-0.5, h)).toBe(pipeThickness(0.5, h));
+    expect(pipeThickness(0.8, h)).toBeGreaterThan(pipeThickness(0.3, h));
+    expect(pipeThickness(null, h)).toBeCloseTo(PIPE_MIN * h, 9);
+    expect(pipeThickness(1.7, h)).toBeCloseTo(PIPE_MAX * h, 9); // never beyond the thickest
+  });
+
+  it('moves the flow faster for a stronger link and not at all without one', () => {
+    expect(flowSpeed(null)).toBe(0);
+    expect(flowSpeed(0.9)).toBeGreaterThan(flowSpeed(0.2));
+    expect(flowSpeed(-0.9)).toBe(flowSpeed(0.9));
+  });
+
+  it('fills a tank by its level and leaves an unknown tank empty', () => {
+    expect(fillFraction(null)).toBe(0);
+    expect(fillFraction(0)).toBeCloseTo(0.06, 12);
+    expect(fillFraction(1)).toBeCloseTo(0.94, 12);
+    expect(fillFraction(0.5)).toBeCloseTo(0.5, 12);
+    expect(fillFraction(3)).toBeCloseTo(0.94, 12);
+  });
+});

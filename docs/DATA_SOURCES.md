@@ -16,7 +16,7 @@ The app is for market context only. It is not financial advice.
 | Forex, near-live | **No free feed cleared for a public demo.** File import only. Kraken works technically but needs written consent (see below). | n/a |
 | Forex and gold, daily | Frankfurter reference rates | Daily, labelled as reference rates |
 | US 10-year yield | US Treasury daily par yield curve | Daily |
-| Risk mood | Load from a file. Cboe's VIX file cannot be read by a browser. | Age of the file |
+| Risk mood | A daily file you import. Cboe's VIX file cannot be read by a browser directly. | Age of the file |
 | Calendar | No free source cleared. Open decision. | n/a |
 | News | Central-bank headline feeds exist but most need a scheduled copy step. Open decision. | n/a |
 
@@ -86,7 +86,19 @@ Settled with the project owner on 10 November 2026.
   The "10 Yr" column is the driver.
 - Browser-callable: yes. No key. Official US government publication.
 - One value per business day, published after the US close.
-- No usage limits are documented; the app fetches it once per session.
+- No usage limits are documented. The app asks for the current and
+  previous year when it starts and keeps the answer for six hours.
+- A copy is saved in `public/samples/drivers/us10y.csv` (regenerate with
+  `npm run samples:yield`). If the Treasury cannot be reached the app uses
+  that copy and says so.
+
+### Risk mood: a file you import
+
+No risk-mood feed is built in. The Files panel takes any daily
+"date, value" CSV, for example a volatility index or share index history,
+and keeps it in the browser. The importer reads the layout of Cboe's VIX
+history file (`DATE,OPEN,HIGH,LOW,CLOSE`); that file was used to test the
+import and is not shipped. Check the terms of whatever file you use.
 
 ## Checked and not used
 
