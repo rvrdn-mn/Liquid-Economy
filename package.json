@@ -13,7 +13,8 @@
     "samples:fetch": "node scripts/fetch-reference-samples.mjs",
     "map:build": "node scripts/build-map.mjs",
     "samples:yield": "node scripts/fetch-yield-sample.mjs",
-    "samples:journal": "node scripts/build-demo-journal.mjs"
+    "samples:journal": "node scripts/build-demo-journal.mjs",
+    "news:fetch": "node scripts/fetch-news.mjs"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",

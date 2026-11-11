@@ -9,9 +9,9 @@ no predictions, no AI calls at runtime, no server.
 
 ## Status
 
-Phases 0 to 4 are done: the data layer, the terminal shell, the four core
-analysis panels, the weather map, replay, the gold drivers and the liquid
-machine. Journal and live feeds are next.
+Phases 0 to 5 are done: the data layer, the terminal shell, the analysis
+panels, the weather map, replay, the gold drivers, the liquid machine, the
+journal, the live gold price and news. Polish and release are next.
 
 | Phase | State |
 | --- | --- |
@@ -20,8 +20,8 @@ machine. Journal and live feeds are next.
 | 2. Core numbers | Done: strength board, volatility, session clock, linked pairs |
 | 3. Weather map | Done: weather map and replay across every panel |
 | 4. Gold | Done: gold drivers table and the liquid machine |
-| 5. Journal and feeds | Next |
-| 6. Polish and release | |
+| 5. Journal and feeds | Done: journal with chart markers, live gold price, central-bank news |
+| 6. Polish and release | Next |
 
 ## Using it
 
@@ -41,6 +41,11 @@ machine. Journal and live feeds are next.
   as storms.
 - `RPL` replay: pick a past moment, then step or play forward. Every panel
   shows only what was known at that moment.
+- `JRN` journal: trade statistics, with entries and exits marked on the
+  chart. It shows invented demo trades, labelled DEMO, until you import
+  your own history.
+- `NEWS` press-release headlines from central banks, each linking to the
+  bank. The top bar shows the live gold price with its age.
 - `DRV` gold drivers and `LIQ` liquid machine: how the dollar, the US
   10-year yield and a risk-mood series have moved with gold. Risk mood is a
   daily file you import in `FILES`.

@@ -18,7 +18,7 @@ The app is for market context only. It is not financial advice.
 | US 10-year yield | US Treasury daily par yield curve | Daily |
 | Risk mood | A daily file you import. Cboe's VIX file cannot be read by a browser directly. | Age of the file |
 | Calendar | No free source cleared. Open decision. | n/a |
-| News | Central-bank headline feeds exist but most need a scheduled copy step. Open decision. | n/a |
+| News | Press-release headlines from five central banks whose terms allow it, copied when the site is built | Age of the copy, shown in the panel |
 
 ## Decisions
 
@@ -34,9 +34,9 @@ Settled with the project owner on 10 November 2026.
   files. The adapter layer leaves room for a live forex feed later.
 - **Risk mood loads from a file.**
 - **Calendar is left out of version 1.** No free source is cleared.
-- **News: proposed, not yet approved.** A scheduled job would copy
-  central-bank headlines into the site, once each bank's reuse terms have
-  been read.
+- **News: approved.** A build step copies central-bank headlines into the
+  site, for the banks whose own terms allow it (see below). Running it on
+  a timer is set up with deployment in phase 6.
 
 ## Chosen sources
 
@@ -56,8 +56,11 @@ Settled with the project owner on 10 November 2026.
   key (free plan: 10 requests an hour; minute and hour bars are paid) and
   their docs say never to put the key in frontend code, so the app does not
   use them.
-- Use in the app: a live price line and age stamp for XAU/USD. Candles
-  still come from files.
+- Use in the app: a ticker in the top bar showing the price with its age
+  and source, and a dashed line on the gold chart. It is asked for every
+  30 seconds while the tab is visible, turns "stale" after 150 seconds
+  without a newer price, and can be switched off in the Files panel.
+  Candles still come from files.
 
 ### Frankfurter: daily forex and gold reference rates
 
@@ -169,17 +172,34 @@ written licence". Not usable in a public static app.
 
 ### Central-bank press feeds (news)
 
-Official RSS feeds were reachable for the Federal Reserve, ECB, Bank of
-England, Reserve Bank of Australia and Bank of Canada. Only the Bank of
-Canada feed is browser-callable. The others would need a scheduled job
-(for example a GitHub Action) that copies headline, date and link into the
-site. That keeps the app serverless at run time but is a change to the
-spec, and each bank's reuse terms still have to be read. The Bank of
-Japan, Swiss National Bank and Reserve Bank of New Zealand feeds were not
-tested.
+`npm run news:fetch` copies the latest press-release headlines into
+`public/news/headlines.json`. Only the title, date and a link back to the
+bank are stored; no article text. Each bank's terms page was read on
+11 November 2026. A bank is included only if those terms allow this.
 
-No free calendar source cleared for public display was found. Whether to
-add the scheduled copy step for news is an open decision.
+| Bank | Currency | Included | What its terms say |
+| --- | --- | --- | --- |
+| Federal Reserve Board | USD | Yes | "in the public domain and may be copied and distributed without permission. Please cite to the Board as the source" |
+| European Central Bank | EUR | Yes | "users of this website may make free use of the information", accurately and with "the ECB ... cited as the source" |
+| Swiss National Bank | CHF | Yes | may be "transmitted or used in other ways, for non-commercial purposes", with reference to the source |
+| Reserve Bank of Australia | AUD | Yes | Creative Commons Attribution 4.0 |
+| Bank of Canada | CAD | Yes | "freely use, copy, distribute and transmit its website content" with attribution |
+| Bank of England | GBP | **No** | Personal or internal non-commercial use only; other reuse needs permission through its request form |
+| Bank of Japan | JPY | **No** | Terms page not found; the site footer says "All Rights Reserved" |
+| Reserve Bank of New Zealand | NZD | **No** | Terms page refused automated access, so it could not be read |
+
+Consequences: there are no headlines for GBP, JPY or NZD, and none
+specific to gold. The panel says so. The Swiss National Bank's terms cover
+non-commercial use, which this project is; if that ever changes, remove it.
+The three excluded banks can be added once their terms are confirmed or
+permission is given.
+
+The headlines are fetched when the site is built, not by the visitor's
+browser, because most of these feeds do not allow browser requests. The
+panel shows how long ago they were copied.
+
+No free calendar source cleared for public display was found, so the
+Calendar panel stays out of version 1.
 
 ### Intraday data for the public demo
 

@@ -213,3 +213,9 @@ input[type='datetime-local'] { background: var(--raised); border: 1px solid var(
 .ticker.stale .ticker-price { color: var(--dim); }
 .ticker.stale .ticker-age { color: var(--gold); }
 .ticker.waiting { color: var(--dim); }
+
+/* News */
+.news td { vertical-align: top; padding-top: 3px; padding-bottom: 3px; }
+.news a { color: var(--text); text-decoration: none; }
+.news a:hover { color: var(--accent); text-decoration: underline; }
+.news .ccy-tag { color: var(--accent); font-weight: 600; }

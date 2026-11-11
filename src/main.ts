@@ -12,6 +12,7 @@ import { helpPanel } from './panels/help';
 import { journalPanel } from './panels/journal';
 import { linksPanel } from './panels/links';
 import { liquidPanel } from './panels/liquid';
+import { newsPanel } from './panels/news';
 import { sessionPanel } from './panels/session';
 import { strengthPanel } from './panels/strength';
 import { volatilityPanel } from './panels/volatility';
@@ -42,6 +43,7 @@ const built: Partial<Record<PanelCode, PanelFactory>> = {
   DRV: driversPanel,
   LIQ: liquidPanel,
   JRN: journalPanel,
+  NEWS: newsPanel,
 };
 const factories = (code: PanelCode): PanelFactory => built[code] ?? placeholderPanel(code);
 

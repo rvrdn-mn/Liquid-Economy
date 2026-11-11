@@ -26,7 +26,7 @@ export const PANELS: Record<PanelCode, PanelInfo> = {
   DRV: { code: 'DRV', title: 'Gold drivers', description: 'How the dollar, yields and risk mood move with gold' },
   LIQ: { code: 'LIQ', title: 'Liquid machine', description: 'Tanks and pipes showing what is moving gold' },
   JRN: { code: 'JRN', title: 'Journal', description: 'Trade history, statistics and chart markers' },
-  NEWS: { code: 'NEWS', title: 'News', description: 'Central-bank headlines', pending: 'Built in phase 5.' },
+  NEWS: { code: 'NEWS', title: 'News', description: 'Central-bank headlines' },
   CAL: {
     code: 'CAL',
     title: 'Calendar',

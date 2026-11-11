@@ -102,6 +102,39 @@ different dates. If your imported gold files cover fewer days than the
 window needs, the sample set's longer history is used and the footer says
 so.
 
+## Journal statistics (JRN)
+
+Counted over closed trades. A trade's result is its profit plus any
+commission and swap the file lists.
+
+- **Win rate:** winning trades as a share of all closed trades.
+- **Average win / average loss:** the mean result of the winning trades,
+  and of the losing trades.
+- **Profit factor:** total won divided by total lost. With no losing trade
+  it has no value and the panel says "no losses".
+- **By session:** the session open when the trade was entered. Overlaps
+  (Asia + London, London + New York) are their own rows.
+- **By day of week:** the day the trade was entered, in the display time
+  zone.
+
+Entries and exits are marked on the chart on the bar they fall in. In
+replay, trades not yet opened are hidden, and a trade still running at the
+replay moment is shown as open, without its eventual result.
+
+The trade history file is a table with a header row. The simplest layout:
+
+```
+id,symbol,type,volume,open time,open price,close time,close price,commission,swap,profit
+1,XAUUSD,buy,0.10,2026-07-13 03:00,4000.00,2026-07-14 09:30,4025.50,-0.70,-0.25,255.00
+```
+
+The reader also recognises the column names of MetaTrader 4 and 5 history
+reports (HTML or CSV). Those layouts were written from the platforms'
+column names and have not yet been checked against a real report.
+
+Until you import your own history, the app shows a **demo journal** of
+invented trades, marked DEMO in the panel and on the chart.
+
 ## Weather map (WX)
 
 The same numbers as the strength board and the volatility panel, regrouped

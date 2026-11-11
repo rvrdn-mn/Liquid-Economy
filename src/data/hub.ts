@@ -14,6 +14,7 @@ import { crossLegs, getDerivedCross } from './cross';
 import { parseDailyCsv, parseTreasuryYields, treasuryUrl } from './dailyCsv';
 import { GOLD_API_URL, GOLD_POLL_SECONDS, parseGoldQuote } from './goldApi';
 import { decodeText } from './mtCsv';
+import { isSafeLink } from './rss';
 import { loadSamples, type SampleManifest } from './samples';
 import { parseTradeHistory } from './tradeHistory';
 import type { Trade } from '../calc/journal';
@@ -30,6 +31,31 @@ export interface ImportOutcome {
 }
 
 export type DriverId = 'yield' | 'risk';
+
+export interface NewsItem {
+  source: string;
+  currency: string;
+  title: string;
+  link: string;
+  time: number;
+}
+
+export interface NewsSource {
+  id: string;
+  name: string;
+  currency: string;
+  site: string;
+  terms: string;
+  count: number;
+  error?: string;
+}
+
+export interface News {
+  /** UTC epoch seconds when the headlines were copied from the banks. */
+  fetchedAt: number;
+  sources: NewsSource[];
+  items: NewsItem[];
+}
 
 export interface Journal {
   trades: Trade[];
@@ -74,6 +100,8 @@ export class DataHub {
   liveGoldError: string | null = null;
   private liveTimer: ReturnType<typeof setInterval> | null = null;
   private readonly liveListeners = new Set<() => void>();
+  /** Headlines copied from central banks at the last site build; null if the file is missing. */
+  private newsData: News | null = null;
   /** The trade history in use: the user's own, or the demo until they import one. */
   journal: Journal | null = null;
   private demoJournal: Journal | null = null;
@@ -110,6 +138,7 @@ export class DataHub {
     }
     await this.loadSavedYield();
     await this.loadDemoJournal();
+    await this.loadNews();
     try {
       for (const f of await fileStore.all()) {
         if (f.kind === 'journal') {
@@ -140,6 +169,29 @@ export class DataHub {
     }
     this.changed();
     void this.refreshYield();
+  }
+
+  // --------------------------------------------------------------- news
+
+  private async loadNews(): Promise<void> {
+    try {
+      const res = await fetch('news/headlines.json');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const raw = (await res.json()) as { fetchedAt: string; sources: NewsSource[]; items: NewsItem[] };
+      const sites = new Map(raw.sources.map((s) => [s.id, new URL(s.site).hostname.replace(/^www\./, '')]));
+      // Checked again here: a headline is only ever a link back to its own bank.
+      const items = raw.items.filter((i) => typeof i.title === 'string' && typeof i.time === 'number' && isSafeLink(i.link, sites.get(i.source) ?? ''));
+      this.newsData = { fetchedAt: Math.floor(Date.parse(raw.fetchedAt) / 1000), sources: raw.sources, items };
+    } catch {
+      this.newsData = null; // the panel says there are no headlines; nothing is made up
+    }
+  }
+
+  /** Headlines as known at the current moment: in replay, only those published by then. */
+  news(): News | null {
+    if (!this.newsData || this.replayTime === null) return this.newsData;
+    const at = this.replayTime;
+    return { ...this.newsData, items: this.newsData.items.filter((i) => i.time <= at) };
   }
 
   // ---------------------------------------------------------- live gold
