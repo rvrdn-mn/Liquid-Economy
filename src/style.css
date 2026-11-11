@@ -202,3 +202,14 @@ input[type='datetime-local'] { background: var(--raised); border: 1px solid var(
 .stat-value { font-family: var(--mono); font-size: 15px; }
 .two-up { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-bottom: 4px; }
 .replay-tag[hidden] { display: none; }
+
+/* Live gold ticker */
+.ticker { display: inline-flex; gap: 6px; align-items: baseline; background: none; border: 1px solid var(--border); padding: 1px 8px; font-family: var(--mono); font-size: 11px; cursor: pointer; white-space: nowrap; }
+.ticker[hidden] { display: none; }
+.ticker:hover { border-color: var(--gold); }
+.ticker-name { color: var(--gold); font-weight: 600; }
+.ticker-price { color: var(--text); }
+.ticker-age { color: var(--dim); font-size: 10px; }
+.ticker.stale .ticker-price { color: var(--dim); }
+.ticker.stale .ticker-age { color: var(--gold); }
+.ticker.waiting { color: var(--dim); }

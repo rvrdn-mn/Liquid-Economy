@@ -11,7 +11,9 @@ import {
   createChart,
   createSeriesMarkers,
   type IChartApi,
+  type IPriceLine,
   type ISeriesApi,
+  LineStyle,
   type SeriesMarker,
   type Time,
   type UTCTimestamp,
@@ -249,6 +251,27 @@ export const chartPanel: PanelFactory = (body, footer, ctx) => {
     footer.title = data.source.note ?? '';
   };
 
+  /** A dashed line at the live gold price. Never part of the bars, and never shown during replay. */
+  let liveLine: IPriceLine | null = null;
+  let liveLineOn: ISeriesApi<'Candlestick'> | ISeriesApi<'Line'> | null = null;
+  const syncLiveLine = () => {
+    const q = hub.liveGold;
+    const want = q !== null && shown !== null && series !== null && shown.instrument === 'XAUUSD' && hub.replayTime === null && state.settings.liveGold;
+    if (liveLine && (liveLineOn !== series || !want)) {
+      if (liveLineOn === series && series) series.removePriceLine(liveLine);
+      liveLine = null;
+      liveLineOn = null;
+    }
+    if (!want || !series || !q) return;
+    const options = { price: q.price, color: COLORS.gold, lineWidth: 1 as const, lineStyle: LineStyle.Dashed, axisLabelVisible: true, title: `live · ${q.source.label}` };
+    if (liveLine) liveLine.applyOptions(options);
+    else {
+      liveLine = series.createPriceLine(options);
+      liveLineOn = series;
+    }
+  };
+  const offLive = hub.onLive(syncLiveLine);
+
   let ticket = 0;
   const reload = async () => {
     const { instrument, timeframe } = state.settings;
@@ -266,6 +289,7 @@ export const chartPanel: PanelFactory = (body, footer, ctx) => {
     if (mine !== ticket) return; // a newer request overtook this one
     if (data) show(data);
     else showEmpty(instrument, timeframe);
+    syncLiveLine();
   };
 
   const offSettings = state.onSettings(() => void reload());
@@ -277,6 +301,7 @@ export const chartPanel: PanelFactory = (body, footer, ctx) => {
       ticket++;
       offSettings();
       offData();
+      offLive();
       chart.remove();
     },
   };

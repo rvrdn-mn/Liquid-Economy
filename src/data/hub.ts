@@ -12,13 +12,14 @@ import { fileStore, type StoredFile } from './fileStore';
 import { isFileZone, type FileZone } from './fileZone';
 import { crossLegs, getDerivedCross } from './cross';
 import { parseDailyCsv, parseTreasuryYields, treasuryUrl } from './dailyCsv';
+import { GOLD_API_URL, GOLD_POLL_SECONDS, parseGoldQuote } from './goldApi';
 import { decodeText } from './mtCsv';
 import { loadSamples, type SampleManifest } from './samples';
 import { parseTradeHistory } from './tradeHistory';
 import type { Trade } from '../calc/journal';
 import type { DayRoll } from './aggregate';
 import { clampReplay, stepReplay, type Extent } from '../app/replay';
-import { TIMEFRAMES, type BarRequest, type BarSeries, type DailySeries, type InstrumentId, type Timeframe } from './types';
+import { TIMEFRAMES, type BarRequest, type BarSeries, type DailySeries, type InstrumentId, type Quote, type Timeframe } from './types';
 
 export interface ImportOutcome {
   fileName: string;
@@ -67,6 +68,12 @@ export class DataHub {
   private replayTimer: ReturnType<typeof setInterval> | null = null;
   /** Daily driver series that are not prices: the 10-year yield and a risk-mood measure. */
   private readonly drivers = new Map<DriverId, DailySeries>();
+  /** Latest near-live gold quote; null until one arrives. It carries its own time, so its age can always be shown. */
+  liveGold: Quote | null = null;
+  /** Why there is no fresh quote, when the last request failed. */
+  liveGoldError: string | null = null;
+  private liveTimer: ReturnType<typeof setInterval> | null = null;
+  private readonly liveListeners = new Set<() => void>();
   /** The trade history in use: the user's own, or the demo until they import one. */
   journal: Journal | null = null;
   private demoJournal: Journal | null = null;
@@ -133,6 +140,45 @@ export class DataHub {
     }
     this.changed();
     void this.refreshYield();
+  }
+
+  // ---------------------------------------------------------- live gold
+
+  /** Told when the live quote changes. Separate from onChange so a new tick does not recompute every panel. */
+  onLive(fn: () => void): () => void {
+    this.liveListeners.add(fn);
+    return () => this.liveListeners.delete(fn);
+  }
+
+  private async fetchLiveGold(): Promise<void> {
+    // No requests from a hidden tab.
+    if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+    try {
+      const res = await fetch(GOLD_API_URL, { cache: 'no-store' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const quote = parseGoldQuote(await res.json(), Math.floor(Date.now() / 1000));
+      if (!quote) throw new Error('unreadable reply');
+      this.liveGold = quote;
+      this.liveGoldError = null;
+    } catch (err) {
+      // Keep the last quote: it still shows its true age and turns "stale" on its own.
+      this.liveGoldError = (err as Error).message;
+    }
+    this.liveListeners.forEach((fn) => fn());
+  }
+
+  /** Start or stop asking for the gold price. */
+  setLiveGold(on: boolean): void {
+    if (this.liveTimer !== null) clearInterval(this.liveTimer);
+    this.liveTimer = null;
+    if (!on) {
+      this.liveGold = null;
+      this.liveGoldError = null;
+      this.liveListeners.forEach((fn) => fn());
+      return;
+    }
+    void this.fetchLiveGold();
+    this.liveTimer = setInterval(() => void this.fetchLiveGold(), GOLD_POLL_SECONDS * 1000);
   }
 
   // ------------------------------------------------------------ journal

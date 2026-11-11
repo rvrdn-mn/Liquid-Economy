@@ -155,3 +155,31 @@ describe('liquid machine shapes', () => {
     expect(fillFraction(3)).toBeCloseTo(0.94, 12);
   });
 });
+
+import { parseGoldQuote } from '../src/data/goldApi';
+
+describe('live gold quote', () => {
+  // A real reply from api.gold-api.com/price/XAU, recorded 10 Nov 2026.
+  const reply = { currency: 'USD', currencySymbol: '$', exchangeRate: 1.0, name: 'Gold', price: 4077.699951, symbol: 'XAU', updatedAt: '2026-11-10T12:18:32Z', updatedAtReadable: 'a few seconds ago' };
+
+  it('reads the price and the time the service says it was updated', () => {
+    const q = parseGoldQuote(reply, 1_000);
+    expect(q).toEqual({
+      instrument: 'XAUUSD',
+      price: 4077.699951,
+      time: Date.UTC(2026, 10, 10, 12, 18, 32) / 1000,
+      source: { adapter: 'gold-api', label: 'gold-api.com', freshness: 'near-live', asOf: Date.UTC(2026, 10, 10, 12, 18, 32) / 1000, retrievedAt: 1_000 },
+    });
+  });
+
+  it('refuses a reply it cannot trust, so no price is shown without its age', () => {
+    expect(parseGoldQuote({ ...reply, updatedAt: undefined }, 0)).toBeNull();
+    expect(parseGoldQuote({ ...reply, updatedAt: 'soon' }, 0)).toBeNull();
+    expect(parseGoldQuote({ ...reply, price: '4077' }, 0)).toBeNull();
+    expect(parseGoldQuote({ ...reply, price: 0 }, 0)).toBeNull();
+    expect(parseGoldQuote({ ...reply, symbol: 'XAG' }, 0)).toBeNull();
+    expect(parseGoldQuote({ ...reply, currency: 'EUR' }, 0)).toBeNull();
+    expect(parseGoldQuote({ error: 'rate limited' }, 0)).toBeNull();
+    expect(parseGoldQuote(null, 0)).toBeNull();
+  });
+});

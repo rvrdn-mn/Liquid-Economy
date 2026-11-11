@@ -21,7 +21,8 @@ import { replayPanel } from './panels/replay';
 import type { PanelContext, PanelFactory } from './panels/types';
 import { CommandBar } from './ui/commandBar';
 import { Grid } from './ui/grid';
-import { formatDateTime, h, zoneLabel } from './ui/dom';
+import { GOLD_POLL_SECONDS, GOLD_STALE_SECONDS } from './data/goldApi';
+import { formatAge, formatDateTime, h, zoneLabel } from './ui/dom';
 
 const state = new AppState();
 const hub = new DataHub();
@@ -87,12 +88,51 @@ const renderReplayMark = () => {
 hub.onChange(renderReplayMark);
 state.onSettings(renderReplayMark);
 
+// Live gold: the price with its source and its age, always together.
+const ticker = h('button', { type: 'button', class: 'ticker', hidden: true });
+ticker.addEventListener('click', () => bar.run('XAU CHART'));
+const renderTicker = () => {
+  const q = hub.liveGold;
+  if (!state.settings.liveGold) {
+    ticker.hidden = true;
+    return;
+  }
+  ticker.hidden = false;
+  if (!q) {
+    ticker.className = 'ticker waiting';
+    ticker.textContent = hub.liveGoldError ? 'Live gold unavailable' : 'Live gold: waiting';
+    ticker.title = hub.liveGoldError ? `gold-api.com could not be reached (${hub.liveGoldError}). Trying again every ${GOLD_POLL_SECONDS} seconds.` : 'Asking gold-api.com';
+    return;
+  }
+  const age = Math.max(0, Date.now() / 1000 - q.time);
+  const stale = age > GOLD_STALE_SECONDS;
+  ticker.className = `ticker ${stale ? 'stale' : ''}`;
+  ticker.replaceChildren(
+    h('span', { class: 'ticker-name' }, 'XAU'),
+    h('span', { class: 'ticker-price' }, q.price.toFixed(2)),
+    h('span', { class: 'ticker-age' }, `${stale ? 'stale · ' : ''}${formatAge(q.time)} · ${q.source.label}`),
+  );
+  ticker.title = `Spot gold in US dollars from ${q.source.label}, updated ${formatDateTime(q.time, state.settings.displayZone)} ${zoneLabel(state.settings.displayZone)}.${stale ? ' No newer price has arrived.' : ''} Click to chart gold.`;
+};
+hub.onLive(renderTicker);
+state.onSettings(renderTicker);
+setInterval(renderTicker, 1000); // keeps the age honest between quotes
+let liveOn: boolean | null = null;
+const syncLive = () => {
+  if (state.settings.liveGold === liveOn) return;
+  liveOn = state.settings.liveGold;
+  hub.setLiveGold(liveOn);
+};
+state.onSettings(syncLive);
+
 const desk = h('main', { class: 'desk' });
 document.getElementById('app')!.append(
-  h('header', { class: 'topbar' }, h('span', { class: 'brand' }, 'Liquid Markets Desk'), bar.el, replayMark, selection),
+  h('header', { class: 'topbar' }, h('span', { class: 'brand' }, 'Liquid Markets Desk'), bar.el, replayMark, ticker, selection),
   desk,
   h('footer', { class: 'statusbar' }, h('span', {}, 'For market context only. Not financial advice.'), h('span', { class: 'dim' }, 'Press / for commands · HELP lists everything')),
 );
 
 grid = new Grid(desk, ctx, factories);
+renderTicker();
+syncLive();
 void hub.start();

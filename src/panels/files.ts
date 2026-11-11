@@ -33,6 +33,8 @@ export const filesPanel: PanelFactory = (body, footer, ctx) => {
   zone.addEventListener('change', () => state.update({ displayZone: zone.value as 'local' | 'utc' }));
   const roll = h('select', { 'aria-label': 'Trading day starts at' }, h('option', { value: 'ny17' }, '17:00 New York'), h('option', { value: 'utc' }, 'Midnight UTC'));
   roll.addEventListener('change', () => state.update({ dayRoll: roll.value as 'ny17' | 'utc' }));
+  const liveBox = h('input', { type: 'checkbox' });
+  liveBox.addEventListener('change', () => state.update({ liveGold: liveBox.checked }));
   const settings = h(
     'div',
     { class: 'settings' },
@@ -40,6 +42,9 @@ export const filesPanel: PanelFactory = (body, footer, ctx) => {
     h('p', {}, h('label', {}, 'Show times in ', zone)),
     h('p', {}, h('label', {}, 'Trading day starts at ', roll)),
     h('p', { class: 'dim' }, 'The trading day setting affects four-hour and daily bars built from finer files.'),
+    h('h3', {}, 'Live gold'),
+    h('p', {}, h('label', {}, liveBox, ' Show the live gold price from gold-api.com')),
+    h('p', { class: 'dim' }, 'When on, this browser asks gold-api.com for the price every 30 seconds while the tab is visible. Nothing about you is sent beyond the request itself.'),
   );
 
   const riskInput = h('input', { type: 'file', accept: '.csv,.txt', class: 'visually-hidden', id: 'risk-input' });
@@ -125,6 +130,7 @@ export const filesPanel: PanelFactory = (body, footer, ctx) => {
   const render = () => {
     zone.value = state.settings.displayZone;
     roll.value = state.settings.dayRoll;
+    liveBox.checked = state.settings.liveGold;
     offset.value = String(state.settings.importZone);
 
     const mine = hub.importedFiles();
