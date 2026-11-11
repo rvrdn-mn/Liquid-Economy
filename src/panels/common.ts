@@ -20,6 +20,8 @@ export function reportProblem(err: unknown): void {
 export function live(ctx: PanelContext, refresh: (current: () => boolean) => Promise<void> | void, extraCleanup?: () => void): PanelInstance {
   let ticket = 0;
   const run = () => {
+    // Until the data has been read there is nothing true to show; the hub calls back when it is ready.
+    if (!ctx.hub.ready) return;
     const mine = ++ticket;
     try {
       const result = refresh(() => mine === ticket);

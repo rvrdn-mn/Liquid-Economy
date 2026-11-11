@@ -86,6 +86,8 @@ export class DataHub {
   sampleManifest: SampleManifest | null = null;
   /** Problems found while starting up, for the Files panel to show. */
   startupErrors: string[] = [];
+  /** False until the sample set and saved files have been read, so panels can wait instead of flashing "no data". */
+  ready = false;
   /** The moment being replayed, or null when showing the latest data. */
   replayTime: number | null = null;
   replayPlaying = false;
@@ -167,6 +169,7 @@ export class DataHub {
     } catch (err) {
       this.startupErrors.push(`Saved files are unavailable in this browser: ${(err as Error).message}`);
     }
+    this.ready = true;
     this.changed();
     void this.refreshYield();
   }

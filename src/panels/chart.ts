@@ -276,6 +276,10 @@ export const chartPanel: PanelFactory = (body, footer, ctx) => {
 
   let ticket = 0;
   const reload = async () => {
+    if (!hub.ready) {
+      footer.textContent = 'Loading data…';
+      return;
+    }
     const { instrument, timeframe } = state.settings;
     const mine = ++ticket;
     symbol.textContent = instrument;
