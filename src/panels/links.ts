@@ -64,7 +64,7 @@ export const linksPanel: PanelFactory = (body, footer, ctx) => {
         }
         const flagged = Math.abs(link.r) > correlationThreshold;
         const td = h('td', { class: `num cell ${flagged ? 'flagged' : ''}`, title: `${row} and ${col}: ${signed(link.r)} over ${link.n} returns` }, signed(link.r));
-        td.style.backgroundColor = `rgba(${link.r >= 0 ? '57, 135, 229' : '217, 89, 38'}, ${(Math.abs(link.r) * 0.5).toFixed(3)})`;
+        td.style.backgroundColor = `rgba(${link.r >= 0 ? '44, 154, 216' : '161, 95, 224'}, ${(Math.abs(link.r) * 0.5).toFixed(3)})`;
         tr.append(td);
       }
       tbody.append(tr);
@@ -81,7 +81,7 @@ export const linksPanel: PanelFactory = (body, footer, ctx) => {
       }
       nodes.push(h('h3', {}, `Linked above ${correlationThreshold.toFixed(2)}`), list);
     }
-    nodes.push(h('p', { class: 'dim note' }, `Correlation of bar-to-bar returns over the last ${correlationWindow} ${timeframe} bars both instruments share. Blue is moving together (toward +1), orange is moving opposite (toward −1); a stronger colour is a stronger link. Outlined cells are above the flag level.`));
+    nodes.push(h('p', { class: 'dim note' }, `Correlation of bar-to-bar returns over the last ${correlationWindow} ${timeframe} bars both instruments share. Blue is moving together (toward +1), purple is moving opposite (toward −1); a stronger colour is a stronger link. Outlined cells are above the flag level.`));
     content.replaceChildren(...nodes);
   });
 };

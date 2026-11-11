@@ -32,16 +32,16 @@ const LOOKBACKS = [
 
 /**
  * Neutral slate map; colour only for meaning. Pressure is a two-ended
- * scale with a grey middle: blue for high (strong), orange for low (weak),
- * as on a weather chart. The pair was checked for colour-blind viewers.
+ * scale with a grey middle: blue for high (strong), purple for low (weak),
+ * with labels and H/L marks saying the same thing in words.
  */
 const COLORS = {
   ocean: '#0b0c0e',
   grid: 'rgba(232, 234, 237, 0.035)',
   land: '#15181c',
   coast: '#2a2f37',
-  high: [57, 135, 229] as const,
-  low: [217, 89, 38] as const,
+  high: [44, 154, 216] as const,
+  low: [161, 95, 224] as const,
   mid: [86, 91, 99] as const,
   text: '#e8eaed',
   dim: '#8a9099',
@@ -154,7 +154,7 @@ export const weatherPanel: PanelFactory = (body, footer, ctx) => {
     if (!running) renderStill();
   };
 
-  /** Grey in the middle of the scale, blending toward blue (high) or orange (low). */
+  /** Grey in the middle of the scale, blending toward blue (high) or purple (low). */
   const pressureColor = (pressure: number, alpha: number) => {
     const k = Math.min(1, Math.abs(pressure - 50) / 50);
     const pole = pressure >= 50 ? COLORS.high : COLORS.low;
@@ -616,7 +616,7 @@ export const weatherPanel: PanelFactory = (body, footer, ctx) => {
         from = target;
       }
       readout.replaceChildren(...view.currencies.map(chip));
-      legend.textContent = `Pressure is the strength score: blue and H for strong, orange and L for weak, grey in between. Wind is the change in that score over the last ${view.windBars} ${timeframe} bars; streams flow toward currencies gaining strength. Storm is each currency's average volatility against its own usual level (1.00× is usual).`;
+      legend.textContent = `Pressure is the strength score: blue and H for strong, purple and L for weak, grey in between. Wind is the change in that score over the last ${view.windBars} ${timeframe} bars; streams flow toward currencies gaining strength. Storm is each currency's average volatility against its own usual level (1.00× is usual).`;
       sync();
     },
     () => {

@@ -15,8 +15,8 @@ export function pipeThickness(r: number | null, height: number): number {
 }
 
 export const DIRECTION_COLORS: Record<LinkDirection, readonly [number, number, number]> = {
-  with: [57, 135, 229], // moving with gold (blue)
-  against: [217, 89, 38], // moving against gold (orange)
+  with: [44, 154, 216], // moving with gold (blue)
+  against: [161, 95, 224], // moving against gold (purple)
   none: [110, 116, 126], // no reading
 };
 

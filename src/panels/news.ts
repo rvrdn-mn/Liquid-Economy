@@ -4,6 +4,17 @@ import { formatAge, formatDateTime, h, zoneLabel } from '../ui/dom';
 import { choiceBar, live } from './common';
 import type { PanelFactory } from './types';
 
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const two = (n: number) => String(n).padStart(2, '0');
+
+/** "10 Nov" and "02:30" in the display zone. */
+function shortDate(seconds: number, zone: 'local' | 'utc'): [string, string] {
+  const d = new Date(seconds * 1000);
+  return zone === 'utc'
+    ? [`${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}`, `${two(d.getUTCHours())}:${two(d.getUTCMinutes())}`]
+    : [`${d.getDate()} ${MONTHS[d.getMonth()]}`, `${two(d.getHours())}:${two(d.getMinutes())}`];
+}
+
 export const newsPanel: PanelFactory = (body, footer, ctx) => {
   const { state, hub } = ctx;
   body.classList.add('scroll');
@@ -46,7 +57,10 @@ export const newsPanel: PanelFactory = (body, footer, ctx) => {
       const tb = h('tbody', {});
       for (const i of items) {
         const link = h('a', { href: i.link, target: '_blank', rel: 'noopener noreferrer' }, i.title);
-        tb.append(h('tr', {}, h('td', { class: 'dim' }, formatDateTime(i.time, zone)), h('td', { class: 'ccy-tag' }, i.currency), h('td', { class: 'wrap' }, link, h('span', { class: 'dim' }, ` · ${names.get(i.source) ?? i.source}`))));
+        const [day, time] = shortDate(i.time, zone);
+        tb.append(
+          h('tr', {}, h('td', { class: 'news-when', title: formatDateTime(i.time, zone) }, h('div', {}, day), h('div', { class: 'dim' }, time)), h('td', { class: 'wrap' }, h('div', { class: 'news-title' }, link), h('div', { class: 'news-meta' }, `${names.get(i.source) ?? i.source} · ${i.currency}`))),
+        );
       }
       table.append(tb);
       nodes.push(table);

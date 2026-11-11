@@ -16,13 +16,13 @@ const C = {
   glass: '#313740',
   text: '#e8eaed',
   dim: '#8a9099',
-  high: [57, 135, 229] as const,
-  low: [217, 89, 38] as const,
+  high: [44, 154, 216] as const,
+  low: [161, 95, 224] as const,
   mid: [86, 91, 99] as const,
-  income: [57, 135, 229] as const,
+  income: [44, 154, 216] as const,
   spending: [25, 158, 112] as const,
   savings: [201, 133, 0] as const,
-  trade: [144, 133, 233] as const,
+  trade: [150, 158, 170] as const,
 };
 const rgba = (c: readonly [number, number, number], a: number) => `rgba(${c[0]}, ${c[1]}, ${c[2]}, ${a.toFixed(3)})`;
 const mono = (px: number, bold = false) => `${bold ? '600 ' : ''}${px}px ui-monospace, Menlo, Consolas, monospace`;

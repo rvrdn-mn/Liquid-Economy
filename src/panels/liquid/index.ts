@@ -377,7 +377,7 @@ export const liquidPanel: PanelFactory = (body, footer, ctx) => {
       }
       const goldChip = h('span', { class: 'wx-chip', 'data-driver': 'gold' }, h('span', { class: 'wx-ccy gold' }, 'Gold'), h('span', { class: 'dim' }, next.gold.level === null ? '' : `level ${(next.gold.level * 100).toFixed(0)}%`));
       readout.replaceChildren(goldChip, ...next.rows.map(chip));
-      legend.textContent = `A thicker pipe is a stronger link with gold over the last ${driverWindow} days. Blue means the driver has moved with gold, orange against it. Each tank's level is where its latest value sits between its ${driverWindow}-day low and high; the driver tanks are grey because only the pipes carry a meaning in colour.${next.gold.closeOnly ? ' Gold here is a daily reference rate that trails the market by about a day, so links are understated.' : ''}`;
+      legend.textContent = `A thicker pipe is a stronger link with gold over the last ${driverWindow} days. Blue means the driver has moved with gold, purple against it. Each tank's level is where its latest value sits between its ${driverWindow}-day low and high; the driver tanks are grey because only the pipes carry a meaning in colour.${next.gold.closeOnly ? ' Gold here is a daily reference rate that trails the market by about a day, so links are understated.' : ''}`;
       const lastDay = Math.max(...next.rows.map((r) => r.link?.lastTime ?? 0), next.gold.latest?.time ?? 0);
       footer.textContent = ['D1', `${driverWindow}-day window`, lastDay > 0 ? `to ${new Date(lastDay * 1000).toISOString().slice(0, 10)}` : '', next.replay ? 'replay' : '', `gold: ${next.gold.sourceLabel}`].filter(Boolean).join(' · ');
       anim.sync();

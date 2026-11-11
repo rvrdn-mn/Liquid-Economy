@@ -92,7 +92,7 @@ The liquid machine draws the same readings:
 
 - **Pipe thickness** grows in step with the size of the link, whatever its
   sign.
-- **Pipe colour** is the direction: blue for moving with gold, orange for
+- **Pipe colour** is the direction: blue for moving with gold, purple for
   moving against it. A driver with no reading has a thin dashed pipe.
 - **Tank level** is where the latest value sits between its 30-day low and
   high: empty at the low, full at the high.
@@ -142,7 +142,7 @@ by currency and drawn as weather.
 
 - **Pressure** is the strength score, 0 to 100. Isobars ring each region,
   H marks a strong currency (60 or more) and L a weak one (40 or less).
-  Blue is strong, orange is weak, grey is in between.
+  Blue is strong, purple is weak, grey is in between.
 - **Wind** is the change in that score over the last 6 bars. Streams flow
   out of currencies losing strength and into those gaining it.
 - **Storm** is the average volatility ratio of the currency's seven pairs.
@@ -200,11 +200,9 @@ complicated than this.
 
 Backgrounds are neutral blacks and slate greys. Colour is kept for meaning:
 
-- **Blue and orange** are the two ends of a scale: strong and weak on the
+- **Blue and purple** are the two ends of a scale: strong and weak on the
   weather map, with gold and against gold in the gold views, together and
-  opposite in linked pairs. The pair was checked with a colour-vision
-  validator and stays distinguishable for colour-blind viewers; an earlier
-  blue and violet pair did not.
+  opposite in linked pairs. Grey is the middle.
 - **Green and red** mean up and down, always with an arrow or a sign.
 - **Gold** is gold itself, plus the replay and demo markers.
 

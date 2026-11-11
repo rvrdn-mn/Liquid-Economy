@@ -93,7 +93,7 @@ export const driversPanel: PanelFactory = (body, footer, ctx) => {
     }
     for (const row of view.rows) if (row.available && row.note) nodes.push(h('p', { class: 'dim note' }, `${row.label}: ${row.note}`));
     nodes.push(
-      h('p', { class: 'dim note' }, `Link: correlation of gold's daily percentage change with each driver's daily change over the last ${driverWindow} days both have. Blue is moving with gold (toward +1), orange against it (toward −1). The dollar is this app's own measure: its average daily move against the other seven majors, as an index starting at 100. The yield's change is in percentage points.`),
+      h('p', { class: 'dim note' }, `Link: correlation of gold's daily percentage change with each driver's daily change over the last ${driverWindow} days both have. Blue is moving with gold (toward +1), purple against it (toward −1). The dollar is this app's own measure: its average daily move against the other seven majors, as an index starting at 100. The yield's change is in percentage points.`),
     );
     content.replaceChildren(...nodes);
 
