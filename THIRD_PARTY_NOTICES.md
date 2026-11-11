@@ -1,5 +1,10 @@
 # Third-party notices
 
+Liquid Markets Desk itself is under the MIT licence (see `LICENSE`). The
+licences of everything it is built with were checked before that choice:
+Lightweight Charts and TypeScript are Apache 2.0; Vite and Vitest are MIT;
+world-atlas and topojson-client are ISC. All are compatible with MIT.
+
 ## TradingView Lightweight Charts
 
 Used for the chart panel. Licensed under the Apache License, Version 2.0.

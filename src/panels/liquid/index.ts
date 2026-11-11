@@ -177,11 +177,11 @@ export const liquidPanel: PanelFactory = (body, footer, ctx) => {
     const tankW = Math.max(84, Math.min(width * 0.2, 230));
     const leftX = Math.max(small * 1.2, width * 0.06);
     const slot = usable / 3;
-    const tankH = slot - small * 3.4;
+    const tankH = Math.max(14, slot - small * 3.4);
     const goldW = Math.max(100, Math.min(width * 0.24, 270));
     const goldX = width - Math.max(small * 1.2, width * 0.07) - goldW;
     const goldY = top + small * 1.4;
-    const goldH = usable - small * 3.8;
+    const goldH = Math.max(40, usable - small * 3.8);
 
     // Pipes first, so the tanks sit on top of their ends.
     view.rows.forEach((row, i) => {

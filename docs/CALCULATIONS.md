@@ -6,7 +6,7 @@ code that draws it. Nothing here predicts anything or gives a signal.
 
 Defaults below are starting values. They are stored as settings; the
 strength lookback and the correlation window can be changed in their
-panels, and a full settings screen comes in phase 6.
+panels, and all of them in the Settings panel (`SET`).
 
 ## Currency strength (STR)
 
@@ -165,6 +165,36 @@ given only what was known at that moment:
 Each step moves one bar of the selected timeframe. A gold REPLAY marker
 stays in the top bar for as long as replay is on.
 
+## Liquid Economy lab (LAB)
+
+**A teaching model, not analysis.** It uses no market data and forecasts
+nothing. Eight economies start identical, with round numbers that are not
+real interest or tax rates, so the only differences on screen are the ones
+you make with the two valves. Nothing in the lab feeds any other panel.
+
+Each economy, each step:
+
+- taxes = income × tax rate, spent back by the government
+- spending = what is left × a spend share that falls as the interest rate
+  rises
+- saving = what is left after spending, into the savings tank
+- investment = saving × a lend share that also falls as the rate rises
+- imports = 20% of spending and government spending; every import is
+  another economy's export, a little less from those with a strong
+  currency
+- income moves toward spending + government + investment + exports −
+  imports
+
+Between economies, savings flow toward higher interest rates. An economy's
+model pressure is how attractive it is (money arriving plus half its trade
+balance) compared with the average of the eight, on a 0-100 scale where 50
+is average.
+
+What it is meant to show: raising one rate cools that economy, fills its
+savings tank, draws money in and lifts its pressure; raising a tax moves
+spending from households to government. Real economies are far more
+complicated than this.
+
 ## Rules that apply to every panel
 
 - **One "as of" time.** Panels that compare instruments stop at the moment
@@ -192,6 +222,9 @@ stays in the top bar for as long as replay is on.
 - On real one-minute files for October 2026 (not in the repository), the
   EURUSD–GBPUSD hourly correlation, the EURUSD volatility ratio and the
   EURUSD busiest hours were recomputed the same way and agreed.
+- The lab model is tested for the properties above, and for keeping its
+  books: money that leaves one economy arrives in another, and every
+  import is another's export.
 - Replay is tested to never change a bar it has already shown and never to
   include anything later than the replay moment.
 - The gold-driver links on the sample data were recomputed separately at

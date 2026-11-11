@@ -173,9 +173,10 @@ tr.open-row td { color: var(--accent); }
 input[type='datetime-local'] { background: var(--raised); border: 1px solid var(--border); padding: 2px 4px; font-family: var(--mono); color-scheme: dark; }
 
 /* Weather map */
-.weather-body { display: flex; flex-direction: column; }
+/* A short panel scrolls rather than letting the notes spill over its footer. */
+.weather-body { display: flex; flex-direction: column; overflow: auto; }
 .wx-toolbar { flex: none; margin: 0; padding: 4px 8px; border-bottom: 1px solid var(--border); }
-.wx-host { flex: 1; min-height: 120px; position: relative; overflow: hidden; background: #080b10; }
+.wx-host { flex: 1 0 170px; min-height: 170px; position: relative; overflow: hidden; background: #080b10; }
 .wx-host[hidden], .wx-empty[hidden] { display: none; }
 .wx-layer { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .wx-empty { flex: 1; position: relative; }
