@@ -11,11 +11,12 @@ import { FileImportAdapter, type ImportedSeries, type ImportResult } from './fil
 import { fileStore, type StoredFile } from './fileStore';
 import { isFileZone, type FileZone } from './fileZone';
 import { crossLegs, getDerivedCross } from './cross';
+import { parseDailyCsv, parseTreasuryYields, treasuryUrl } from './dailyCsv';
 import { decodeText } from './mtCsv';
 import { loadSamples, type SampleManifest } from './samples';
 import type { DayRoll } from './aggregate';
 import { clampReplay, stepReplay, type Extent } from '../app/replay';
-import { TIMEFRAMES, type BarRequest, type BarSeries, type InstrumentId, type Timeframe } from './types';
+import { TIMEFRAMES, type BarRequest, type BarSeries, type DailySeries, type InstrumentId, type Timeframe } from './types';
 
 export interface ImportOutcome {
   fileName: string;
@@ -23,6 +24,16 @@ export interface ImportOutcome {
   error?: string;
   /** Set when the file imported but could not be saved for next time. */
   notSaved?: string;
+}
+
+export type DriverId = 'yield' | 'risk';
+
+const RISK_FILE_ID = 'driver|risk';
+const YIELD_CACHE_KEY = 'lmd.us10y.v1';
+const YIELD_CACHE_SECONDS = 6 * 3600;
+
+interface DriverManifest {
+  yield?: { path: string; label: string; source: string; retrievedAt: string };
 }
 
 export class DataHub {
@@ -40,6 +51,8 @@ export class DataHub {
   /** Steps per second while playing. */
   replaySpeed = 2;
   private replayTimer: ReturnType<typeof setInterval> | null = null;
+  /** Daily driver series that are not prices: the 10-year yield and a risk-mood measure. */
+  private readonly drivers = new Map<DriverId, DailySeries>();
 
   onChange(fn: () => void): () => void {
     this.listeners.add(fn);
@@ -71,8 +84,17 @@ export class DataHub {
     } catch (err) {
       this.startupErrors.push(`Sample files could not be loaded: ${(err as Error).message}`);
     }
+    await this.loadSavedYield();
     try {
       for (const f of await fileStore.all()) {
+        if (f.kind === 'driver') {
+          try {
+            if (f.id === RISK_FILE_ID) this.setRiskSeries(f.fileName, f.text, f.importedAt);
+          } catch (err) {
+            this.startupErrors.push(`Saved driver file ${f.fileName} could not be read: ${(err as Error).message}`);
+          }
+          continue;
+        }
         try {
           this.files.importText(f.fileName, f.text, { zone: isFileZone(f.zone) ? f.zone : 0, now: () => f.importedAt });
         } catch (err) {
@@ -83,6 +105,152 @@ export class DataHub {
       this.startupErrors.push(`Saved files are unavailable in this browser: ${(err as Error).message}`);
     }
     this.changed();
+    void this.refreshYield();
+  }
+
+  // ------------------------------------------------------------ drivers
+
+  /** The yield snapshot shipped with the app, so the drivers work with no network. */
+  private async loadSavedYield(): Promise<void> {
+    try {
+      const res = await fetch('samples/drivers/manifest.json');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const manifest = (await res.json()) as DriverManifest;
+      if (!manifest.yield) return;
+      const csv = await fetch(`samples/drivers/${manifest.yield.path}`);
+      if (!csv.ok) throw new Error(`HTTP ${csv.status}`);
+      const { points } = parseDailyCsv(await csv.text());
+      const saved = Math.floor(Date.parse(manifest.yield.retrievedAt) / 1000);
+      this.drivers.set('yield', {
+        id: 'yield',
+        label: manifest.yield.label,
+        points,
+        source: { adapter: 'sample', label: manifest.yield.source, freshness: 'file', asOf: points[points.length - 1]!.time, retrievedAt: saved },
+      });
+    } catch (err) {
+      this.startupErrors.push(`The saved yield data could not be loaded: ${(err as Error).message}`);
+    }
+  }
+
+  /**
+   * Ask the US Treasury for the current and previous year. Kept for six
+   * hours in the browser so a refresh does not ask again. If the request
+   * fails the saved copy stays in use and its label says so.
+   */
+  private async refreshYield(): Promise<void> {
+    const now = Math.floor(Date.now() / 1000);
+    const live = (points: DailySeries['points'], retrievedAt: number): DailySeries => ({
+      id: 'yield',
+      label: 'US 10-year Treasury yield',
+      points,
+      source: { adapter: 'treasury', label: 'US Treasury daily par yield curve', freshness: 'daily', asOf: points[points.length - 1]!.time, retrievedAt },
+    });
+    try {
+      const cached = JSON.parse(localStorage.getItem(YIELD_CACHE_KEY) ?? 'null') as { fetchedAt: number; points: DailySeries['points'] } | null;
+      if (cached && now - cached.fetchedAt < YIELD_CACHE_SECONDS && cached.points.length > 0) {
+        this.drivers.set('yield', live(cached.points, cached.fetchedAt));
+        this.changed();
+        return;
+      }
+    } catch {
+      /* no usable cache */
+    }
+    try {
+      const year = new Date().getUTCFullYear();
+      const texts = await Promise.all(
+        [year - 1, year].map(async (y) => {
+          const res = await fetch(treasuryUrl(y));
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          return res.text();
+        }),
+      );
+      const byTime = new Map<number, number>();
+      for (const text of texts) for (const p of parseTreasuryYields(text).points) byTime.set(p.time, p.value);
+      const points = [...byTime].map(([time, value]) => ({ time, value })).sort((a, b) => a.time - b.time);
+      if (points.length === 0) throw new Error('empty');
+      this.drivers.set('yield', live(points, now));
+      try {
+        localStorage.setItem(YIELD_CACHE_KEY, JSON.stringify({ fetchedAt: now, points }));
+      } catch {
+        /* storage blocked: fetch again next time */
+      }
+      this.changed();
+    } catch {
+      const saved = this.drivers.get('yield');
+      if (saved) saved.source.note = 'The Treasury could not be reached, so this is the copy saved with the app.';
+      this.changed();
+    }
+  }
+
+  private setRiskSeries(fileName: string, text: string, importedAt: number): DailySeries {
+    const { points } = parseDailyCsv(text);
+    const series: DailySeries = {
+      id: 'risk',
+      label: `Risk mood (${fileName})`,
+      points,
+      source: { adapter: 'file', label: `File: ${fileName}`, freshness: 'file', asOf: points[points.length - 1]!.time, retrievedAt: importedAt },
+    };
+    this.drivers.set('risk', series);
+    return series;
+  }
+
+  /** Load a risk-mood file (a "date, value" CSV such as an index history). Throws with a plain reason if unreadable. */
+  async importRiskFile(file: File): Promise<{ series: DailySeries; notSaved?: string }> {
+    const text = decodeText(await file.arrayBuffer());
+    const importedAt = Math.floor(Date.now() / 1000);
+    const series = this.setRiskSeries(file.name, text, importedAt);
+    let notSaved: string | undefined;
+    try {
+      await fileStore.put({ id: RISK_FILE_ID, kind: 'driver', fileName: file.name, text, zone: 0, importedAt });
+    } catch (err) {
+      notSaved = (err as Error).message;
+    }
+    this.changed();
+    return notSaved === undefined ? { series } : { series, notSaved };
+  }
+
+  async removeRiskFile(): Promise<void> {
+    this.drivers.delete('risk');
+    try {
+      await fileStore.remove(RISK_FILE_ID);
+    } catch {
+      /* gone from memory either way */
+    }
+    this.changed();
+  }
+
+  /** What is loaded for a driver, ignoring replay; for the Files panel. */
+  driverInfo(id: DriverId): DailySeries | null {
+    return this.drivers.get(id) ?? null;
+  }
+
+  /**
+   * A driver's daily series. In replay, a day's value is included once that
+   * day is over (UTC), which is after it was published.
+   */
+  async getDailySeries(id: DriverId): Promise<DailySeries | null> {
+    const series = this.drivers.get(id);
+    if (!series) return null;
+    if (this.replayTime === null) return series;
+    const replayAt = this.replayTime;
+    const points = series.points.filter((p) => p.time + 86400 <= replayAt);
+    if (points.length === 0) return null;
+    return { ...series, points, source: { ...series.source, asOf: points[points.length - 1]!.time, replayAt } };
+  }
+
+  /**
+   * Bars for calculations that need a minimum history. The usual choice is
+   * used when it is long enough; otherwise the sample set is used if it is
+   * longer. A one-month import should not blank a 30-day calculation that
+   * the sample data can still answer.
+   */
+  async getLongBars(req: BarRequest, minBars: number): Promise<BarSeries | null> {
+    const usual = await this.getBars(req);
+    if (usual && usual.bars.length >= minBars) return usual;
+    if (this.replayTime !== null && req.asOf === undefined) req = { ...req, asOf: this.replayTime };
+    const sample = await this.samples.getBars(req);
+    if (sample && sample.bars.length > (usual?.bars.length ?? 0)) return sample;
+    return usual;
   }
 
   async importFiles(files: File[], zone: FileZone): Promise<ImportOutcome[]> {

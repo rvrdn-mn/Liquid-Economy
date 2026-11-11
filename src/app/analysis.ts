@@ -9,6 +9,7 @@
  * November would otherwise look like a move.
  */
 import { correlationLinks, isFlagged, type Link } from '../calc/correlation';
+import { driverLink, indexFromMoves, latestMove, levelInRange, linkDirection, type ChangeKind, type DriverLink, type LinkDirection, type Point } from '../calc/drivers';
 import { hourlyRangeProfile, type HourlyProfile } from '../calc/session';
 import { pairOf, strengthAt, type StrengthResult } from '../calc/strength';
 import { currencyVolatility, scoreChange, stormLevel, type CurrencyWeather } from '../calc/weather';
@@ -21,6 +22,7 @@ import {
   type BarRequest,
   type BarSeries,
   type Currency,
+  type DailySeries,
   type InstrumentId,
   type Timeframe,
 } from '../data/types';
@@ -254,4 +256,114 @@ export async function weatherView(source: BarSource, timeframe: Timeframe, lookb
     level: stormLevel(storm[currency]),
   }));
   return view;
+}
+
+// ------------------------------------------------------------- gold drivers
+
+export type DriverId = 'dollar' | 'yield' | 'risk';
+
+export interface DriverSource extends BarSource {
+  /** Bars with at least `minBars` of history where any source can give them. */
+  getLongBars?(req: BarRequest, minBars: number): Promise<BarSeries | null>;
+  getDailySeries(id: 'yield' | 'risk'): Promise<DailySeries | null>;
+}
+
+export interface DriverRow {
+  id: DriverId;
+  label: string;
+  /** How the value is written: '%' for a yield, '' for an index. */
+  unit: string;
+  kind: ChangeKind;
+  /** False when there is no data for this driver; `reason` says what to do. */
+  available: boolean;
+  reason?: string;
+  latest: { value: number; change: number; time: number } | null;
+  /** Where the latest value sits in its range over the window: 0 low, 1 high. */
+  level: number | null;
+  link: DriverLink | null;
+  direction: LinkDirection;
+  sourceLabel?: string;
+  note?: string;
+}
+
+export interface DriversView {
+  window: number;
+  gold: { latest: { value: number; change: number; time: number } | null; level: number | null; sourceLabel: string; closeOnly: boolean; days: number } | null;
+  rows: DriverRow[];
+  /** Why nothing can be shown, when gold itself has no daily data. */
+  reason?: string;
+  replay: boolean;
+}
+
+const USD_PAIRS = FX_PAIRS.filter((p) => p.includes('USD'));
+
+/** Finished daily bars as dated points. */
+function dailyPoints(series: BarSeries): Point[] {
+  const replayAt = series.source.replayAt;
+  const bars = replayAt === undefined ? series.bars : series.bars.filter((b) => b.time + 86400 <= replayAt);
+  return bars.map((b) => ({ time: b.time, value: b.close }));
+}
+
+/**
+ * The dollar driver: the app's own dollar strength. Each day's value is
+ * the dollar's average move against the other majors that day (the number
+ * behind the strength score, with a one-day lookback), compounded into an
+ * index that starts at 100. No extra feed is needed.
+ */
+async function dollarIndex(source: DriverSource, minBars: number): Promise<{ points: Point[]; pairs: number; sources: string[]; replay: boolean }> {
+  const long: BarSource = { getBars: (req) => (source.getLongBars ? source.getLongBars(req, minBars) : source.getBars(req)) };
+  const loaded = await loadMany(long, USD_PAIRS, 'D1');
+  if (loaded.asOf === null) return { points: [], pairs: 0, sources: [], replay: loaded.replay };
+  const bars = new Map([...loaded.series].map(([k, v]) => [k, v.bars as readonly Bar[]]));
+  const reference = loaded.series.get(loaded.limitedBy ?? [...loaded.series.keys()][0]!)!.bars;
+  const moves: { time: number; percent: number }[] = [];
+  for (const bar of reference) {
+    const end = bar.time + 86400;
+    if (end > loaded.asOf) break;
+    const s = strengthAt(bars, 86400, end, 86400);
+    // Only days on which every loaded dollar pair has a move, so the index is one consistent basket.
+    if (s.average.USD === null || s.pairsUsed.USD !== loaded.series.size) continue;
+    moves.push({ time: bar.time, percent: s.average.USD });
+  }
+  return { points: indexFromMoves(moves), pairs: loaded.series.size, sources: loaded.sources, replay: loaded.replay };
+}
+
+export async function driversView(source: DriverSource, window: number): Promise<DriversView> {
+  const minBars = window + 3;
+  const goldReq: BarRequest = { instrument: 'XAUUSD', timeframe: 'D1' };
+  const [goldSeries, dollar, yields, risk] = await Promise.all([
+    source.getLongBars ? source.getLongBars(goldReq, minBars) : source.getBars(goldReq),
+    dollarIndex(source, minBars),
+    source.getDailySeries('yield'),
+    source.getDailySeries('risk'),
+  ]);
+  const replay = goldSeries?.source.replayAt !== undefined || dollar.replay || yields?.source.replayAt !== undefined;
+  if (!goldSeries) {
+    return { window, gold: null, rows: [], reason: 'No daily gold data is loaded, so there is nothing to compare the drivers with.', replay };
+  }
+  const gold = dailyPoints(goldSeries);
+
+  const row = (id: DriverId, label: string, unit: string, kind: ChangeKind, points: Point[] | null, sourceLabel: string | undefined, missing: string, note?: string): DriverRow => {
+    if (!points || points.length < 2) {
+      return { id, label, unit, kind, available: false, reason: missing, latest: null, level: null, link: null, direction: 'none' };
+    }
+    const link = driverLink(gold, points, kind, window);
+    const out: DriverRow = { id, label, unit, kind, available: true, latest: latestMove(points, kind), level: levelInRange(points, window), link, direction: linkDirection(link.r) };
+    if (sourceLabel !== undefined) out.sourceLabel = sourceLabel;
+    if (note !== undefined) out.note = note;
+    return out;
+  };
+
+  const dollarNote = dollar.pairs > 0 && dollar.pairs < USD_PAIRS.length ? `Based on ${dollar.pairs} of the 7 dollar pairs.` : undefined;
+  const rows: DriverRow[] = [
+    row('dollar', 'US dollar', '', 'percent', dollar.points, dollar.sources.join(' + ') || undefined, 'No daily data for the dollar pairs is loaded.', dollarNote),
+    row('yield', yields?.label ?? 'US 10-year Treasury yield', '%', 'difference', yields?.points ?? null, yields?.source.label, 'The yield data could not be loaded.', yields?.source.note),
+    row('risk', risk?.label ?? 'Risk mood', '', 'percent', risk?.points ?? null, risk?.source.label, 'No risk-mood data. Import a daily "date, value" file, such as a volatility index history, in the Files panel.'),
+  ];
+  return {
+    window,
+    gold: { latest: latestMove(gold, 'percent'), level: levelInRange(gold, window), sourceLabel: goldSeries.source.label, closeOnly: goldSeries.source.closeOnly === true, days: gold.length },
+    rows,
+    replay,
+  };
 }

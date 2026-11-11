@@ -1,7 +1,9 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { linksView, loadMany, sessionView, strengthView, volatilityView, weatherView } from '../src/app/analysis';
+import { driversView, linksView, loadMany, sessionView, strengthView, volatilityView, weatherView, type DriverSource } from '../src/app/analysis';
+import { parseDailyCsv } from '../src/data/dailyCsv';
+import type { DailySeries } from '../src/data/types';
 import { DEFAULT_SETTINGS } from '../src/app/state';
 import { FileImportAdapter } from '../src/data/fileAdapter';
 import { FX_PAIRS, INSTRUMENTS } from '../src/data/instruments';
@@ -103,6 +105,67 @@ describe('panels on the shipped sample data', () => {
     expect(by.NZD!.level).toBe('breezy');
     expect(by.CHF!.level).toBe('calm');
     expect(v.volatilityPairs).toBe(28);
+  });
+
+  describe('gold drivers', () => {
+    let yields: DailySeries;
+    beforeAll(async () => {
+      const { points } = parseDailyCsv(await readFile(join(__dirname, '..', 'public', 'samples', 'drivers', 'us10y.csv'), 'utf8'));
+      yields = { id: 'yield', label: 'US 10-year Treasury yield', points, source: { adapter: 'sample', label: 'saved copy', freshness: 'file', asOf: points[points.length - 1]!.time, retrievedAt: 0 } };
+    });
+    /** The sample data as it would be seen at a replay moment (or now, with none). */
+    const source = (asOf?: number): DriverSource => ({
+      getBars: (req) => samples.getBars(asOf === undefined ? req : { ...req, asOf }),
+      getDailySeries: async (id) => {
+        if (id !== 'yield') return null;
+        if (asOf === undefined) return yields;
+        return { ...yields, points: yields.points.filter((p) => p.time + 86400 <= asOf), source: { ...yields.source, replayAt: asOf } };
+      },
+    });
+
+    it('30-day links of the dollar and the 10-year yield with gold', async () => {
+      const v = await driversView(source(), 30);
+      const [dollar, yld, risk] = v.rows;
+      expect(dollar!.link!.r).toBeCloseTo(-0.05441, 5);
+      expect(dollar!.link!.rPrevious).toBeCloseTo(-0.047296, 5);
+      expect(dollar!.link!.n).toBe(264);
+      expect(dollar!.direction).toBe('against');
+      expect(dollar!.latest!.value).toBeCloseTo(100.367734, 5);
+      expect(dollar!.latest!.change).toBeCloseTo(0.2469, 4); // the strength board's dollar move for the day
+      expect(dollar!.level).toBeCloseTo(0.608872, 5);
+      expect(yld!.link!.r).toBeCloseTo(-0.133681, 5);
+      expect(yld!.link!.rPrevious).toBeCloseTo(-0.134189, 5);
+      expect(yld!.link!.n).toBe(254);
+      expect(yld!.latest).toMatchObject({ value: 4.98 }); // the yield file runs a day past the gold sample
+      expect(risk).toMatchObject({ available: false, direction: 'none', link: null });
+      expect(risk!.reason).toMatch(/Import a daily/);
+      expect(v.gold!.level).toBeCloseTo(0.631071, 5);
+      expect(v.gold!.closeOnly).toBe(true);
+      expect(v.replay).toBe(false);
+    });
+
+    it('the links change as replay moves through time', async () => {
+      const at = (y: number, m: number, d: number) => Date.UTC(y, m - 1, d) / 1000;
+      // End of 14 August 2026 and end of 20 March 2026.
+      const august = await driversView(source(at(2026, 8, 15)), 30);
+      expect(august.replay).toBe(true);
+      expect(august.rows[0]!.link!.r).toBeCloseTo(-0.008066, 5);
+      expect(august.rows[1]!.link!.r).toBeCloseTo(0.15449, 5);
+      expect(august.rows[1]!.direction).toBe('with');
+      const march = await driversView(source(at(2026, 3, 21)), 30);
+      expect(march.rows[0]!.link!.r).toBeCloseTo(-0.286218, 5);
+      expect(march.rows[1]!.link!.r).toBeCloseTo(-0.20797, 5);
+      expect(march.rows[1]!.link!.rPrevious).toBeCloseTo(0.013034, 5);
+      expect(march.rows[1]!.direction).toBe('against');
+    });
+
+    it('says so when history is too short for the window', async () => {
+      const at = Date.UTC(2025, 10, 20) / 1000; // 13 trading days into the sample
+      const early = await driversView(source(at), 30);
+      expect(early.rows[0]!.link!.r).toBeNull();
+      expect(early.rows[0]!.link!.n).toBeLessThan(30);
+      expect(early.rows[0]!.direction).toBe('none');
+    });
   });
 
   it('session profile refuses data that has no range', async () => {

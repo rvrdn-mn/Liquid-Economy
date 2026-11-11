@@ -11,7 +11,8 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "samples:fetch": "node scripts/fetch-reference-samples.mjs",
-    "map:build": "node scripts/build-map.mjs"
+    "map:build": "node scripts/build-map.mjs",
+    "samples:yield": "node scripts/fetch-yield-sample.mjs"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",

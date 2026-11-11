@@ -31,6 +31,8 @@ export interface Settings {
   correlationThreshold: number;
   /** Instruments in the linked-pairs grid. */
   watchlist: InstrumentId[];
+  /** Daily bars in the gold-driver correlation. Spec default 30. */
+  driverWindow: number;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -46,6 +48,7 @@ export const DEFAULT_SETTINGS: Settings = {
   correlationWindow: 50,
   correlationThreshold: 0.8,
   watchlist: ['XAUUSD', 'EURUSD', 'GBPUSD', 'USDJPY', 'USDCHF', 'AUDUSD', 'USDCAD', 'NZDUSD'],
+  driverWindow: 30,
 };
 
 const SETTINGS_KEY = 'lmd.settings.v1';
@@ -83,6 +86,7 @@ export function parseSettings(json: string | null): Settings {
     if (whole(s.volatilityBaselineDays, 2, 366)) out.volatilityBaselineDays = s.volatilityBaselineDays;
     if (whole(s.sessionProfileDays, 2, 366)) out.sessionProfileDays = s.sessionProfileDays;
     if (whole(s.correlationWindow, 5, 1000)) out.correlationWindow = s.correlationWindow;
+    if (whole(s.driverWindow, 5, 500)) out.driverWindow = s.driverWindow;
     if (typeof s.correlationThreshold === 'number' && s.correlationThreshold > 0 && s.correlationThreshold < 1) {
       out.correlationThreshold = s.correlationThreshold;
     }
