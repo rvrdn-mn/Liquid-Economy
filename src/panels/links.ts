@@ -11,8 +11,10 @@ const WINDOWS = [
   { value: 100, text: '100' },
 ] as const;
 
-const short = (id: string) => (id === 'XAUUSD' ? 'XAU' : id);
-const signed = (r: number) => `${r >= 0 ? '+' : '−'}${Math.abs(r).toFixed(2)}`;
+/** XAU for gold, and the other currency for a dollar pair, so the grid stays narrow. The full name is in the tooltip. */
+const short = (id: string) => (id === 'XAUUSD' ? 'XAU' : id.startsWith('USD') ? id.slice(3) : id.endsWith('USD') ? id.slice(0, 3) : id);
+/** Two decimals, with a minus sign only: the colour already says which way. */
+const signed = (r: number) => `${r < 0 ? '−' : ''}${Math.abs(r).toFixed(2)}`;
 
 export const linksPanel: PanelFactory = (body, footer, ctx) => {
   const { state, hub } = ctx;
@@ -23,9 +25,10 @@ export const linksPanel: PanelFactory = (body, footer, ctx) => {
   body.append(h('div', { class: 'panel-toolbar' }, h('span', { class: 'dim' }, 'Window'), windowBar.el, tfNote), content);
 
   return live(ctx, async (current) => {
-    const { timeframe, watchlist, correlationWindow, correlationThreshold, displayZone } = state.settings;
+    const { watchlist, correlationWindow, correlationThreshold, displayZone } = state.settings;
+    const timeframe = hub.timeframeFor(watchlist, state.settings.timeframe, 2);
     windowBar.set(correlationWindow);
-    tfNote.textContent = `${timeframe} bars`;
+    tfNote.textContent = timeframe === state.settings.timeframe ? `${timeframe} bars` : `${timeframe} bars (too little ${state.settings.timeframe} data)`;
     const view = await linksView(hub, watchlist, timeframe, correlationWindow, correlationThreshold);
     if (!current()) return;
     footer.textContent = loadedFooter(view.loaded, displayZone, watchlist.length);
@@ -36,7 +39,7 @@ export const linksPanel: PanelFactory = (body, footer, ctx) => {
         view.loaded.series.size < 2
           ? `Fewer than two watchlist instruments have ${timeframe} data. Import price files, or switch to D1 to use the sample set.`
           : `A ${correlationWindow}-bar window needs ${correlationWindow + 1} shared ${timeframe} bars; the most any two instruments share gives ${most} returns. Choose a smaller window.`;
-      content.replaceChildren(emptyState('Links cannot be shown.', detail, { label: 'Open Files', run: () => ctx.run('FILES') }));
+      content.replaceChildren(emptyState('Links cannot be shown.', detail, { label: 'Import files', run: () => ctx.run('FILES') }));
       return;
     }
 
@@ -45,10 +48,10 @@ export const linksPanel: PanelFactory = (body, footer, ctx) => {
     const find = (a: string, b: string) => byKey.get(`${a}|${b}`) ?? byKey.get(`${b}|${a}`);
 
     const grid = h('table', { class: 'grid' });
-    grid.append(h('thead', {}, h('tr', {}, h('th', {}, ''), ...view.instruments.map((id) => h('th', { class: 'num' }, short(id))))));
+    grid.append(h('thead', {}, h('tr', {}, h('th', {}, ''), ...view.instruments.map((id) => h('th', { class: 'num', title: id }, short(id))))));
     const tbody = h('tbody', {});
     for (const row of view.instruments) {
-      const tr = h('tr', {}, h('th', { scope: 'row' }, short(row)));
+      const tr = h('tr', {}, h('th', { scope: 'row', title: row }, short(row)));
       for (const col of view.instruments) {
         if (row === col) {
           tr.append(h('td', { class: 'num self' }, '·'));
@@ -61,7 +64,7 @@ export const linksPanel: PanelFactory = (body, footer, ctx) => {
         }
         const flagged = Math.abs(link.r) > correlationThreshold;
         const td = h('td', { class: `num cell ${flagged ? 'flagged' : ''}`, title: `${row} and ${col}: ${signed(link.r)} over ${link.n} returns` }, signed(link.r));
-        td.style.backgroundColor = `rgba(79, 179, 200, ${(Math.abs(link.r) * 0.45).toFixed(3)})`;
+        td.style.backgroundColor = `rgba(${link.r >= 0 ? '57, 135, 229' : '217, 89, 38'}, ${(Math.abs(link.r) * 0.5).toFixed(3)})`;
         tr.append(td);
       }
       tbody.append(tr);
@@ -74,11 +77,11 @@ export const linksPanel: PanelFactory = (body, footer, ctx) => {
     } else {
       const list = h('ul', { class: 'flag-list' });
       for (const l of view.flagged) {
-        list.append(h('li', {}, h('span', { class: 'mono' }, `${short(l.a)} and ${short(l.b)}`), ` ${signed(l.r!)} `, h('span', { class: 'dim' }, l.r! > 0 ? 'moving together' : 'moving opposite')));
+        list.append(h('li', {}, h('span', { class: 'mono' }, `${l.a} and ${l.b}`), ` ${signed(l.r!)} `, h('span', { class: 'dim' }, l.r! > 0 ? 'moving together' : 'moving opposite')));
       }
       nodes.push(h('h3', {}, `Linked above ${correlationThreshold.toFixed(2)}`), list);
     }
-    nodes.push(h('p', { class: 'dim note' }, `Correlation of bar-to-bar returns over the last ${correlationWindow} ${timeframe} bars both instruments share. +1 is moving together, −1 is moving opposite, 0 is unrelated. Outlined cells are above the flag level.`));
+    nodes.push(h('p', { class: 'dim note' }, `Correlation of bar-to-bar returns over the last ${correlationWindow} ${timeframe} bars both instruments share. Blue is moving together (toward +1), orange is moving opposite (toward −1); a stronger colour is a stronger link. Outlined cells are above the flag level.`));
     content.replaceChildren(...nodes);
   });
 };

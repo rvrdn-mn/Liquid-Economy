@@ -6,7 +6,7 @@ code that draws it. Nothing here predicts anything or gives a signal.
 
 Defaults below are starting values. They are stored as settings; the
 strength lookback and the correlation window can be changed in their
-panels, and all of them in the Settings panel (`SET`).
+panels, and all of them on the Settings page.
 
 ## Currency strength (STR)
 
@@ -92,7 +92,7 @@ The liquid machine draws the same readings:
 
 - **Pipe thickness** grows in step with the size of the link, whatever its
   sign.
-- **Pipe colour** is the direction: blue for moving with gold, violet for
+- **Pipe colour** is the direction: blue for moving with gold, orange for
   moving against it. A driver with no reading has a thin dashed pipe.
 - **Tank level** is where the latest value sits between its 30-day low and
   high: empty at the low, full at the high.
@@ -142,6 +142,7 @@ by currency and drawn as weather.
 
 - **Pressure** is the strength score, 0 to 100. Isobars ring each region,
   H marks a strong currency (60 or more) and L a weak one (40 or less).
+  Blue is strong, orange is weak, grey is in between.
 - **Wind** is the change in that score over the last 6 bars. Streams flow
   out of currencies losing strength and into those gaining it.
 - **Storm** is the average volatility ratio of the currency's seven pairs.
@@ -194,6 +195,21 @@ What it is meant to show: raising one rate cools that economy, fills its
 savings tank, draws money in and lifts its pressure; raising a tax moves
 spending from households to government. Real economies are far more
 complicated than this.
+
+## How colour is used
+
+Backgrounds are neutral blacks and slate greys. Colour is kept for meaning:
+
+- **Blue and orange** are the two ends of a scale: strong and weak on the
+  weather map, with gold and against gold in the gold views, together and
+  opposite in linked pairs. The pair was checked with a colour-vision
+  validator and stays distinguishable for colour-blind viewers; an earlier
+  blue and violet pair did not.
+- **Green and red** mean up and down, always with an arrow or a sign.
+- **Gold** is gold itself, plus the replay and demo markers.
+
+Text is always a neutral ink, with a coloured mark beside it where
+identity matters, so nothing depends on reading coloured words.
 
 ## Rules that apply to every panel
 

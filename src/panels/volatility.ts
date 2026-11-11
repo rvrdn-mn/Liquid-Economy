@@ -12,7 +12,8 @@ export const volatilityPanel: PanelFactory = (body, footer, ctx) => {
   body.append(content);
 
   return live(ctx, async (current) => {
-    const { timeframe, atrPeriod, volatilityBaselineDays, displayZone } = state.settings;
+    const { atrPeriod, volatilityBaselineDays, displayZone } = state.settings;
+    const timeframe = hub.timeframeFor(INSTRUMENTS, state.settings.timeframe, 1);
     const view = await volatilityView(hub, INSTRUMENTS, timeframe, atrPeriod, volatilityBaselineDays);
     if (!current()) return;
     footer.textContent = loadedFooter(view.loaded, displayZone, INSTRUMENTS.length);
@@ -22,7 +23,7 @@ export const volatilityPanel: PanelFactory = (body, footer, ctx) => {
         view.loaded.series.size === 0
           ? `No ${timeframe} data is loaded. Import price files, or switch to D1 to use the sample set.`
           : `The loaded ${timeframe} data is too short: it needs more than ${atrPeriod} bars.`;
-      content.replaceChildren(emptyState('Volatility cannot be shown.', detail, { label: 'Open Files', run: () => ctx.run('FILES') }));
+      content.replaceChildren(emptyState('Volatility cannot be shown.', detail, { label: 'Import files', run: () => ctx.run('FILES') }));
       return;
     }
 

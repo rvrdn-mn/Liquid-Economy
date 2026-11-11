@@ -360,8 +360,8 @@ export async function driversView(source: DriverSource, window: number): Promise
   const dollarNote = dollar.pairs > 0 && dollar.pairs < USD_PAIRS.length ? `Based on ${dollar.pairs} of the 7 dollar pairs.` : undefined;
   const rows: DriverRow[] = [
     row('dollar', 'US dollar', '', 'percent', dollar.points, dollar.sources.join(' + ') || undefined, 'No daily data for the dollar pairs is loaded.', dollarNote),
-    row('yield', yields?.label ?? 'US 10-year Treasury yield', '%', 'difference', yields?.points ?? null, yields?.source.label, 'The yield data could not be loaded.', yields?.source.note),
-    row('risk', risk?.label ?? 'Risk mood', '', 'percent', risk?.points ?? null, risk?.source.label, 'No risk-mood data. Import a daily "date, value" file, such as a volatility index history, in the Files panel.'),
+    row('yield', yields?.label ?? 'US 10-year yield', '%', 'difference', yields?.points ?? null, yields?.source.label, 'The yield data could not be loaded.', yields?.source.note),
+    row('risk', risk?.label ?? 'Risk mood', '', 'percent', risk?.points ?? null, risk?.source.label, 'No risk-mood data. Import a daily "date, value" file, such as a volatility index history, on the Data page.'),
   ];
   return {
     window,

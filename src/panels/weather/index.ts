@@ -15,6 +15,7 @@
 import { weatherView, type WeatherView } from '../../app/analysis';
 import { contourSegments } from '../../calc/contour';
 import type { CurrencyWeather, StormLevel } from '../../calc/weather';
+import { FX_PAIRS } from '../../data/instruments';
 import { CURRENCIES, type Currency } from '../../data/types';
 import { h } from '../../ui/dom';
 import { choiceBar, emptyState, live, loadedFooter } from '../common';
@@ -29,25 +30,30 @@ const LOOKBACKS = [
   { value: 720, text: '1M' },
 ] as const;
 
+/**
+ * Neutral slate map; colour only for meaning. Pressure is a two-ended
+ * scale with a grey middle: blue for high (strong), orange for low (weak),
+ * as on a weather chart. The pair was checked for colour-blind viewers.
+ */
 const COLORS = {
-  ocean: '#080b10',
-  grid: 'rgba(120, 140, 170, 0.07)',
-  land: '#111821',
-  coast: '#27323f',
-  high: [79, 200, 225] as const,
-  low: [132, 120, 230] as const,
-  text: '#d5dce6',
-  dim: '#7a8594',
-  up: '#3fb27f',
-  down: '#e0605a',
-  cloud: [205, 213, 224] as const,
-  bolt: '#ffe9a8',
-  gold: '#d9a441',
+  ocean: '#0b0c0e',
+  grid: 'rgba(232, 234, 237, 0.035)',
+  land: '#15181c',
+  coast: '#2a2f37',
+  high: [57, 135, 229] as const,
+  low: [217, 89, 38] as const,
+  mid: [86, 91, 99] as const,
+  text: '#e8eaed',
+  dim: '#8a9099',
+  up: '#2fa87a',
+  down: '#e66767',
+  cloud: [214, 218, 224] as const,
+  bolt: '#f2d27a',
 };
 
 const GRID_COLS = 132;
 const GRID_ROWS = Math.round(GRID_COLS / MAP_ASPECT);
-const LEVELS = [0.12, 0.26, 0.42, 0.6, 0.8];
+const LEVELS = [0.2, 0.45, 0.75];
 const TRANSITION_MS = 450;
 const MAX_WIND = 5;
 const rgba = (c: readonly [number, number, number], a: number) => `rgba(${c[0]}, ${c[1]}, ${c[2]}, ${a.toFixed(3)})`;
@@ -86,8 +92,8 @@ export const weatherPanel: PanelFactory = (body, footer, ctx) => {
   const windLayer = h('canvas', { class: 'wx-layer' });
   const top = h('canvas', { class: 'wx-layer', role: 'img', 'aria-label': 'World map of currency strength drawn as weather. The same readings are listed below the map.' });
   const host = h('div', { class: 'wx-host' }, base, windLayer, top);
-  const readout = h('div', { class: 'wx-readout' });
-  const legend = h('p', { class: 'dim wx-legend' });
+  const readout = h('div', { class: 'wx-readout note' });
+  const legend = h('p', { class: 'note wx-legend' });
   const empty = h('div', { class: 'wx-empty', hidden: true });
   body.append(h('div', { class: 'panel-toolbar wx-toolbar' }, h('span', { class: 'dim' }, 'Lookback'), lookback.el, tfNote), host, empty, readout, legend);
 
@@ -148,9 +154,12 @@ export const weatherPanel: PanelFactory = (body, footer, ctx) => {
     if (!running) renderStill();
   };
 
+  /** Grey in the middle of the scale, blending toward blue (high) or orange (low). */
   const pressureColor = (pressure: number, alpha: number) => {
-    const k = Math.abs(pressure - 50) / 50;
-    return rgba(pressure >= 50 ? COLORS.high : COLORS.low, alpha * (0.25 + 0.75 * k));
+    const k = Math.min(1, Math.abs(pressure - 50) / 50);
+    const pole = pressure >= 50 ? COLORS.high : COLORS.low;
+    const c = [0, 1, 2].map((i) => Math.round(mix(COLORS.mid[i]!, pole[i]!, k))) as [number, number, number];
+    return rgba(c, alpha);
   };
 
   /** The pressure field: each currency pushes the surface up (strong) or down (weak). */
@@ -201,9 +210,9 @@ export const weatherPanel: PanelFactory = (body, footer, ctx) => {
     // Each currency's region, tinted by its pressure.
     for (const c of CURRENCIES) {
       if (!shown[c].known) continue;
-      g.fillStyle = pressureColor(shown[c].pressure, 0.55);
+      g.fillStyle = pressureColor(shown[c].pressure, 0.5);
       g.fill(regionPaths[c]);
-      g.strokeStyle = pressureColor(shown[c].pressure, 0.9);
+      g.strokeStyle = pressureColor(shown[c].pressure, 0.85);
       g.lineWidth = 0.75;
       g.stroke(regionPaths[c]);
     }
@@ -221,7 +230,7 @@ export const weatherPanel: PanelFactory = (body, footer, ctx) => {
       for (const sign of [1, -1]) {
         const seg = contourSegments(grid, level * sign);
         if (seg.length === 0) continue;
-        g.strokeStyle = rgba(sign > 0 ? COLORS.high : COLORS.low, 0.28 + 0.14 * i);
+        g.strokeStyle = rgba(sign > 0 ? COLORS.high : COLORS.low, 0.2 + 0.14 * i);
         g.beginPath();
         for (let k = 0; k < seg.length; k += 4) {
           g.moveTo(map.x + seg[k]! * sx, map.y + seg[k + 1]! * sy);
@@ -233,7 +242,7 @@ export const weatherPanel: PanelFactory = (body, footer, ctx) => {
     g.restore();
 
     // Leader lines from displaced systems back to their region.
-    g.strokeStyle = 'rgba(213, 220, 230, 0.35)';
+    g.strokeStyle = 'rgba(232, 234, 237, 0.3)';
     g.setLineDash([2, 3]);
     g.beginPath();
     for (const c of CURRENCIES) {
@@ -280,7 +289,7 @@ export const weatherPanel: PanelFactory = (body, footer, ctx) => {
     g.fillRect(0, 0, width, height);
     g.globalCompositeOperation = 'source-over';
 
-    const wanted = Math.round(Math.min(700, Math.max(160, (map.w * map.h) / 900)));
+    const wanted = Math.round(Math.min(420, Math.max(120, (map.w * map.h) / 1500)));
     while (particles.length < wanted) {
       const p = { x: 0, y: 0, age: 0, life: 1 };
       spawn(p);
@@ -303,7 +312,7 @@ export const weatherPanel: PanelFactory = (body, footer, ctx) => {
       const ny = p.y + vy * 0.014 * dt;
       if (speed > 0.15) {
         const fade = Math.min(1, p.age * 3, (p.life - p.age) * 3);
-        g.strokeStyle = `rgba(200, 228, 240, ${(Math.min(0.6, 0.1 + speed * 0.1) * Math.max(0, fade)).toFixed(3)})`;
+        g.strokeStyle = `rgba(226, 229, 234, ${(Math.min(0.42, 0.06 + speed * 0.075) * Math.max(0, fade)).toFixed(3)})`;
         g.beginPath();
         g.moveTo(map.x + p.x * map.w, map.y + p.y * map.h);
         g.lineTo(map.x + nx * map.w, map.y + ny * map.h);
@@ -322,7 +331,7 @@ export const weatherPanel: PanelFactory = (body, footer, ctx) => {
     if (!g) return;
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
     g.clearRect(0, 0, width, height);
-    g.strokeStyle = 'rgba(200, 228, 240, 0.5)';
+    g.strokeStyle = 'rgba(226, 229, 234, 0.4)';
     g.lineWidth = 1;
     for (let gx = 0.03; gx < 1; gx += 0.045) {
       for (let gy = 0.06; gy < 1; gy += 0.11) {
@@ -358,7 +367,7 @@ export const weatherPanel: PanelFactory = (body, footer, ctx) => {
       if (r.storm >= 1.1) {
         const radius = unit * (0.022 + 0.04 * strength);
         const cloud = g.createRadialGradient(cx, cy, 0, cx, cy, radius * 1.25);
-        cloud.addColorStop(0, rgba(COLORS.cloud, 0.1 + 0.22 * strength));
+        cloud.addColorStop(0, rgba(COLORS.cloud, 0.06 + 0.16 * strength));
         cloud.addColorStop(1, rgba(COLORS.cloud, 0));
         g.fillStyle = cloud;
         g.beginPath();
@@ -366,7 +375,7 @@ export const weatherPanel: PanelFactory = (body, footer, ctx) => {
         g.fill();
         // Spiral arms, turning faster as the storm strengthens.
         const turn = animate ? (now / 1000) * (0.5 + 1.8 * strength) : 0.6;
-        g.strokeStyle = rgba(COLORS.cloud, 0.3 + 0.5 * strength);
+        g.strokeStyle = rgba(COLORS.cloud, 0.28 + 0.45 * strength);
         g.lineWidth = 1 + strength;
         for (let arm = 0; arm < 3; arm++) {
           g.beginPath();
@@ -445,29 +454,32 @@ export const weatherPanel: PanelFactory = (body, footer, ctx) => {
         g.fill();
       }
       const line1 = r.known ? `${c} ${Math.round(r.pressure)}` : `${c} no data`;
-      const windText = !r.known ? '' : Math.abs(r.wind) < 1 ? '• 0' : `${r.wind > 0 ? '▲' : '▼'} ${r.wind > 0 ? '+' : '−'}${Math.abs(r.wind).toFixed(0)}`;
-      const stormText = r.known ? `${r.storm.toFixed(2)}×` : '';
+      const windText = !r.known ? '' : Math.abs(r.wind) < 1 ? 'steady' : `${r.wind > 0 ? '▲' : '▼'} ${Math.abs(r.wind).toFixed(0)}`;
+      // The storm figure is shown only when there is a storm; calm needs no number.
+      const stormText = r.known && r.level !== 'calm' && r.level !== 'breezy' ? `storm ${r.storm.toFixed(1)}×` : '';
       g.font = `600 ${small}px ui-monospace, Menlo, Consolas, monospace`;
       const w1 = g.measureText(line1).width;
       g.font = `${small}px ui-monospace, Menlo, Consolas, monospace`;
       const w2 = g.measureText(`${windText}  ${stormText}`).width;
-      const boxW = Math.max(w1, w2) + 8;
-      const boxH = small * 2.5 + 4;
+      // On a small map only the name and score are written; the rest is in the list behind the "i".
+      const compact = map.w < 620;
+      const boxW = (compact ? w1 : Math.max(w1, w2)) + 8;
+      const boxH = compact ? small * 1.3 + 4 : small * 2.5 + 4;
       const gap = small * 1.6;
       const bx = side < 0 ? cx - gap - boxW : cx + gap;
       const by = cy - boxH / 2;
-      g.fillStyle = 'rgba(7, 9, 12, 0.72)';
+      g.fillStyle = 'rgba(11, 12, 14, 0.8)';
       g.fillRect(bx, by, boxW, boxH);
       g.textAlign = 'left';
       g.textBaseline = 'top';
       g.font = `600 ${small}px ui-monospace, Menlo, Consolas, monospace`;
       g.fillStyle = COLORS.text;
       g.fillText(line1, bx + 4, by + 3);
-      if (r.known) {
+      if (r.known && !compact) {
         g.font = `${small}px ui-monospace, Menlo, Consolas, monospace`;
         g.fillStyle = Math.abs(r.wind) < 1 ? COLORS.dim : r.wind > 0 ? COLORS.up : COLORS.down;
         g.fillText(windText, bx + 4, by + 3 + small * 1.25);
-        g.fillStyle = r.level === 'calm' ? COLORS.dim : r.level === 'breezy' ? COLORS.text : COLORS.gold;
+        g.fillStyle = COLORS.text;
         g.fillText(stormText, bx + 4 + g.measureText(`${windText}  `).width, by + 3 + small * 1.25);
       }
     }
@@ -552,12 +564,19 @@ export const weatherPanel: PanelFactory = (body, footer, ctx) => {
     baseDirty = true;
   };
 
+  const swatch = (pressure: number | null): HTMLElement => {
+    const el = h('span', { class: 'swatch', 'aria-hidden': 'true' });
+    el.style.background = pressure === null ? 'transparent' : pressureColor(pressure, 1);
+    return el;
+  };
+
   const chip = (w: CurrencyWeather): HTMLElement => {
     const wind = w.wind === null ? 'no wind reading' : Math.abs(w.wind) < 1 ? 'steady' : `${w.wind > 0 ? '▲ +' : '▼ −'}${Math.abs(w.wind).toFixed(0)}`;
     const windClass = w.wind === null || Math.abs(w.wind) < 1 ? 'dim' : w.wind > 0 ? 'up' : 'down';
     return h(
       'span',
       { class: `wx-chip level-${w.level}`, 'data-currency': w.currency },
+      swatch(w.pressure),
       h('span', { class: 'wx-ccy' }, w.currency),
       h('span', { class: 'wx-pressure', title: 'Pressure: strength score, 0 to 100' }, w.pressure === null ? '–' : w.pressure.toFixed(0)),
       h('span', { class: windClass, title: `Wind: change in strength over the last bars` }, wind),
@@ -568,9 +587,10 @@ export const weatherPanel: PanelFactory = (body, footer, ctx) => {
   return live(
     ctx,
     async (current) => {
-      const { timeframe, strengthLookbackHours, atrPeriod, volatilityBaselineDays, displayZone } = state.settings;
+      const { strengthLookbackHours, atrPeriod, volatilityBaselineDays, displayZone } = state.settings;
+      const timeframe = hub.timeframeFor(FX_PAIRS, state.settings.timeframe, 1);
       lookback.set(strengthLookbackHours);
-      tfNote.textContent = `on ${timeframe} bars`;
+      tfNote.textContent = timeframe === state.settings.timeframe ? `on ${timeframe} bars` : `on ${timeframe} bars (no ${state.settings.timeframe} data for the pairs)`;
       const view = await weatherView(hub, timeframe, strengthLookbackHours, atrPeriod, volatilityBaselineDays);
       if (!current()) return;
       footer.textContent = loadedFooter(view.strength.loaded, displayZone, 28);
@@ -579,7 +599,7 @@ export const weatherPanel: PanelFactory = (body, footer, ctx) => {
         hasData = false;
         host.hidden = true;
         empty.hidden = false;
-        empty.replaceChildren(emptyState('The weather map cannot be drawn.', view.strength.reason ?? '', { label: 'Open Files', run: () => ctx.run('FILES') }));
+        empty.replaceChildren(emptyState('The weather map cannot be drawn.', view.strength.reason ?? '', { label: 'Import files', run: () => ctx.run('FILES') }));
         readout.replaceChildren();
         legend.textContent = '';
         sync();
@@ -596,7 +616,7 @@ export const weatherPanel: PanelFactory = (body, footer, ctx) => {
         from = target;
       }
       readout.replaceChildren(...view.currencies.map(chip));
-      legend.textContent = `Pressure is the strength score (H strong, L weak). Wind is the change in that score over the last ${view.windBars} ${timeframe} bars: streams flow toward currencies gaining strength. Storm is each currency's average volatility against its own usual level (1.00× is usual).`;
+      legend.textContent = `Pressure is the strength score: blue and H for strong, orange and L for weak, grey in between. Wind is the change in that score over the last ${view.windBars} ${timeframe} bars; streams flow toward currencies gaining strength. Storm is each currency's average volatility against its own usual level (1.00× is usual).`;
       sync();
     },
     () => {

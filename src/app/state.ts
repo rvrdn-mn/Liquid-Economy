@@ -6,7 +6,8 @@ import { TIMEFRAMES, type InstrumentId, type Timeframe } from '../data/types';
 import { isInstrument } from '../data/instruments';
 import type { DayRoll } from '../data/aggregate';
 import { isFileZone, type FileZone } from '../data/fileZone';
-import { defaultLayout, parseLayout, type Layout } from './layout';
+import { parseLayout, type Layout } from './layout';
+import { defaultWorkspaceLayout, isWorkspaceId, WORKSPACE_IDS, type WorkspaceId } from './workspaces';
 
 export interface Settings {
   instrument: InstrumentId;
@@ -55,7 +56,7 @@ export const DEFAULT_SETTINGS: Settings = {
 };
 
 const SETTINGS_KEY = 'lmd.settings.v1';
-const LAYOUT_KEY = 'lmd.layout.v1';
+const LAYOUT_KEY = 'lmd.workspaces.v2';
 
 function read(key: string): string | null {
   try {
@@ -106,11 +107,62 @@ export function parseSettings(json: string | null): Settings {
 
 type Listener = () => void;
 
+interface SavedWorkspaces {
+  current: WorkspaceId;
+  layouts: Record<WorkspaceId, Layout>;
+}
+
+/** Read the saved pages; anything missing or damaged falls back to that page's starting arrangement. */
+export function parseWorkspaces(json: string | null): SavedWorkspaces {
+  const out: SavedWorkspaces = {
+    current: 'overview',
+    layouts: Object.fromEntries(WORKSPACE_IDS.map((id) => [id, defaultWorkspaceLayout(id)])) as Record<WorkspaceId, Layout>,
+  };
+  if (!json) return out;
+  try {
+    const saved = JSON.parse(json) as { current?: unknown; layouts?: Record<string, unknown> };
+    if (isWorkspaceId(saved.current)) out.current = saved.current;
+    for (const id of WORKSPACE_IDS) {
+      const layout = parseLayout(JSON.stringify(saved.layouts?.[id] ?? null));
+      if (layout) out.layouts[id] = layout;
+    }
+  } catch {
+    /* damaged: defaults */
+  }
+  return out;
+}
+
 export class AppState {
   settings: Settings = parseSettings(read(SETTINGS_KEY));
-  layout: Layout = parseLayout(read(LAYOUT_KEY)) ?? defaultLayout();
+  private readonly saved: SavedWorkspaces = parseWorkspaces(read(LAYOUT_KEY));
   private readonly settingsListeners = new Set<Listener>();
   private readonly layoutListeners = new Set<Listener>();
+
+  /** The page being shown. */
+  get workspace(): WorkspaceId {
+    return this.saved.current;
+  }
+
+  /** The arrangement of the page being shown. */
+  get layout(): Layout {
+    return this.saved.layouts[this.saved.current];
+  }
+
+  /** The arrangement of any page, shown or not. */
+  layoutOf(id: WorkspaceId): Layout {
+    return this.saved.layouts[id];
+  }
+
+  private saveWorkspaces(): void {
+    write(LAYOUT_KEY, JSON.stringify(this.saved));
+  }
+
+  setWorkspace(id: WorkspaceId): void {
+    if (id === this.saved.current) return;
+    this.saved.current = id;
+    this.saveWorkspaces();
+    this.layoutListeners.forEach((fn) => fn());
+  }
 
   /** Change settings. Values outside their allowed range fall back to the default. */
   update(patch: Partial<Settings>): void {
@@ -122,8 +174,8 @@ export class AppState {
   /** `quiet` saves without redrawing, for a splitter that is mid-drag. */
   setLayout(layout: Layout, quiet = false): void {
     if (layout === this.layout) return;
-    this.layout = layout;
-    write(LAYOUT_KEY, JSON.stringify(layout));
+    this.saved.layouts[this.saved.current] = layout;
+    this.saveWorkspaces();
     if (!quiet) this.layoutListeners.forEach((fn) => fn());
   }
 
@@ -133,8 +185,16 @@ export class AppState {
     this.update({ ...DEFAULT_SETTINGS, watchlist: [...DEFAULT_SETTINGS.watchlist], instrument, timeframe });
   }
 
+  /** Put the current page back to its starting arrangement. */
   resetLayout(): void {
-    this.setLayout(defaultLayout());
+    this.setLayout(defaultWorkspaceLayout(this.saved.current));
+  }
+
+  /** Put every page back to its starting arrangement. */
+  resetAllLayouts(): void {
+    for (const id of WORKSPACE_IDS) this.saved.layouts[id] = defaultWorkspaceLayout(id);
+    this.saveWorkspaces();
+    this.layoutListeners.forEach((fn) => fn());
   }
 
   onSettings(fn: Listener): () => void {

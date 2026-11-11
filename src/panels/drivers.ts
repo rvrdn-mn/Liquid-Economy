@@ -35,7 +35,7 @@ export const driversPanel: PanelFactory = (body, footer, ctx) => {
     const view = await driversView(hub, driverWindow);
     if (!current()) return;
     if (!view.gold) {
-      content.replaceChildren(emptyState('Gold drivers cannot be shown.', view.reason ?? '', { label: 'Open Files', run: () => ctx.run('FILES') }));
+      content.replaceChildren(emptyState('Gold drivers cannot be shown.', view.reason ?? '', { label: 'Import files', run: () => ctx.run('FILES') }));
       footer.textContent = 'No data loaded for this view.';
       return;
     }
@@ -43,7 +43,7 @@ export const driversPanel: PanelFactory = (body, footer, ctx) => {
     const table = h(
       'table',
       { class: 'drivers' },
-      h('thead', {}, h('tr', {}, h('th', {}, 'Driver'), h('th', { class: 'num' }, 'Latest'), h('th', { class: 'num' }, 'On the day'), h('th', { class: 'num' }, 'Link with gold'), h('th', {}, ''), h('th', {}, 'Direction'), h('th', { class: 'num' }, 'Since yesterday'))),
+      h('thead', {}, h('tr', {}, h('th', {}, 'Driver'), h('th', { class: 'num' }, 'Latest'), h('th', { class: 'num' }, 'On the day'), h('th', {}, 'Link with gold'), h('th', { class: 'num' }, 'Since yesterday'))),
     );
     const tbody = h('tbody', {});
     const goldMove = view.gold.latest;
@@ -51,38 +51,36 @@ export const driversPanel: PanelFactory = (body, footer, ctx) => {
       h(
         'tr',
         { class: 'gold-row' },
-        h('td', { class: 'gold' }, 'Gold (XAU/USD)'),
+        h('td', { class: 'driver-name' }, 'Gold'),
         h('td', { class: 'num' }, goldMove ? goldMove.value.toFixed(2) : '–'),
         h('td', { class: `num ${goldMove ? (goldMove.change > 0 ? 'up' : goldMove.change < 0 ? 'down' : '') : ''}` }, goldMove ? `${signed(goldMove.change, 2)}%` : '–'),
-        h('td', { class: 'num dim' }, '·'),
-        h('td', {}, ''),
         h('td', { class: 'dim' }, ''),
         h('td', { class: 'num dim' }, ''),
       ),
     );
     for (const row of view.rows) {
       if (!row.available) {
-        tbody.append(h('tr', { 'data-driver': row.id }, h('td', {}, row.label), h('td', { class: 'wrap dim', colspan: '6' }, row.reason ?? 'No data.')));
+        tbody.append(h('tr', { 'data-driver': row.id }, h('td', { class: 'driver-name' }, row.id === 'risk' ? 'Risk mood' : row.label), h('td', { class: 'wrap dim', colspan: '4' }, row.reason ?? 'No data.')));
         continue;
       }
       const move = describeMove(row);
       const link = row.link!;
-      const color = DIRECTION_COLORS[row.direction];
-      const fill = h('span', { class: 'meter-fill' });
-      fill.style.width = `${Math.abs(link.r ?? 0) * 100}%`;
-      fill.style.background = `rgb(${color.join(',')})`;
+      const swatch = h('span', { class: 'swatch', 'aria-hidden': 'true' });
+      swatch.style.background = `rgb(${DIRECTION_COLORS[row.direction].join(',')})`;
       const delta = link.r !== null && link.rPrevious !== null ? link.r - link.rPrevious : null;
       const trend = link.r === null || link.rPrevious === null ? '' : Math.abs(link.r) > Math.abs(link.rPrevious) ? 'stronger' : Math.abs(link.r) < Math.abs(link.rPrevious) ? 'weaker' : 'unchanged';
       tbody.append(
         h(
           'tr',
           { 'data-driver': row.id, title: [row.sourceLabel, row.note].filter(Boolean).join('. ') },
-          h('td', {}, row.label),
+          h('td', { class: 'driver-name' }, row.label),
           h('td', { class: 'num' }, move.value),
           h('td', { class: `num ${move.up === null ? '' : move.up ? 'up' : 'down'}` }, move.change),
-          h('td', { class: 'num link-r', title: link.r === null ? `Needs ${driverWindow} shared days of changes; has ${link.n}` : `Over the last ${driverWindow} of ${link.n} shared days` }, link.r === null ? '–' : signed(link.r, 2)),
-          h('td', { class: 'meter-cell' }, h('span', { class: 'meter wide' }, fill)),
-          h('td', {}, link.r === null ? h('span', { class: 'dim' }, `needs ${driverWindow} days, has ${link.n}`) : DIRECTION_WORDS[row.direction]),
+          h(
+            'td',
+            { class: 'link-cell', title: link.r === null ? `Needs ${driverWindow} shared days of changes; has ${link.n}` : `Over the last ${driverWindow} of ${link.n} shared days` },
+            link.r === null ? h('span', { class: 'dim' }, `needs ${driverWindow} days, has ${link.n}`) : h('span', { class: 'link-value' }, swatch, h('span', { class: 'link-r' }, signed(link.r, 2)), h('span', { class: 'dim' }, ` ${DIRECTION_WORDS[row.direction]}`)),
+          ),
           h('td', { class: 'num' }, delta === null ? '–' : `${signed(delta, 2)} `, delta === null ? null : h('span', { class: 'dim' }, trend)),
         ),
       );
@@ -95,7 +93,7 @@ export const driversPanel: PanelFactory = (body, footer, ctx) => {
     }
     for (const row of view.rows) if (row.available && row.note) nodes.push(h('p', { class: 'dim note' }, `${row.label}: ${row.note}`));
     nodes.push(
-      h('p', { class: 'dim note' }, `Link: correlation of gold's daily percentage change with each driver's daily change over the last ${driverWindow} days both have. +1 is moving together, −1 is moving opposite. The dollar is this app's own measure: its average daily move against the other seven majors, as an index starting at 100. The yield's change is in percentage points.`),
+      h('p', { class: 'dim note' }, `Link: correlation of gold's daily percentage change with each driver's daily change over the last ${driverWindow} days both have. Blue is moving with gold (toward +1), orange against it (toward −1). The dollar is this app's own measure: its average daily move against the other seven majors, as an index starting at 100. The yield's change is in percentage points.`),
     );
     content.replaceChildren(...nodes);
 

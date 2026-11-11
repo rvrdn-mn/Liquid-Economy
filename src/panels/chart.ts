@@ -18,18 +18,19 @@ import {
   type Time,
   type UTCTimestamp,
 } from 'lightweight-charts';
-import { TIMEFRAMES, type Bar, type BarSeries, type InstrumentId, type Timeframe } from '../data/types';
+import type { Bar, BarSeries, InstrumentId, Timeframe } from '../data/types';
 import { formatAge, formatDate, formatDateTime, h, zoneLabel, type Zone } from '../ui/dom';
 import type { PanelFactory } from './types';
 
 const COLORS = {
-  text: '#8b95a5',
-  grid: '#161b23',
-  border: '#222a35',
-  up: '#3fb27f',
-  down: '#e0605a',
-  gold: '#d9a441',
-  accent: '#4fb3c8',
+  text: '#8a9099',
+  grid: '#181b20',
+  border: '#22262d',
+  up: '#2fa87a',
+  down: '#e66767',
+  gold: '#c9a24a',
+  line: '#b9bdc4',
+  mark: '#b9bdc4',
 };
 
 function precision(instrument: InstrumentId): number {
@@ -65,17 +66,16 @@ export const chartPanel: PanelFactory = (body, footer, ctx) => {
   const { state, hub } = ctx;
 
   const symbol = h('span', { class: 'chart-symbol' });
-  const tfButtons = new Map<Timeframe, HTMLButtonElement>();
-  const tfBar = h('div', { class: 'tf-bar', role: 'group', 'aria-label': 'Timeframe' });
-  for (const tf of TIMEFRAMES) {
-    const b = h('button', { type: 'button', class: 'tf' }, tf);
-    b.addEventListener('click', () => state.update({ timeframe: tf }));
-    tfButtons.set(tf, b);
-    tfBar.append(b);
-  }
   const legend = h('div', { class: 'chart-legend' });
+  // Journal trades are drawn on request. They start on for your own history and off for the demo one.
+  let showTrades: boolean | null = null;
+  const tradesToggle = h('button', { type: 'button', class: 'btn btn-quiet trades-toggle', 'aria-pressed': 'false', title: 'Mark journal trades on the chart' }, 'Trades');
+  tradesToggle.addEventListener('click', () => {
+    showTrades = !(showTrades ?? (hub.journal?.demo === false || state.workspace === 'journal'));
+    void reload();
+  });
   const demoNote = h('span', { class: 'replay-tag', hidden: true, title: 'The trade marks on this chart are the invented demo journal, not real trades' }, 'DEMO TRADES');
-  const toolbar = h('div', { class: 'chart-toolbar' }, symbol, tfBar, demoNote, legend);
+  const toolbar = h('div', { class: 'chart-toolbar' }, symbol, tradesToggle, demoNote, legend);
   const canvasHost = h('div', { class: 'chart-host' });
   const empty = h('div', { class: 'panel-empty', hidden: true });
   body.classList.add('chart-body');
@@ -89,6 +89,7 @@ export const chartPanel: PanelFactory = (body, footer, ctx) => {
       textColor: COLORS.text,
       fontFamily: "ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace",
       fontSize: 11,
+      attributionLogo: true,
     },
     grid: { vertLines: { color: COLORS.grid }, horzLines: { color: COLORS.grid } },
     crosshair: { mode: CrosshairMode.Normal },
@@ -152,12 +153,12 @@ export const chartPanel: PanelFactory = (body, footer, ctx) => {
       const entry = barOf(t.openTime);
       const buy = t.side === 'buy';
       if (entry !== null) {
-        out.push({ time: entry as UTCTimestamp, position: buy ? 'belowBar' : 'aboveBar', shape: buy ? 'arrowUp' : 'arrowDown', color: COLORS.accent, text: buy ? 'Buy' : 'Sell' });
+        out.push({ time: entry as UTCTimestamp, position: buy ? 'belowBar' : 'aboveBar', shape: buy ? 'arrowUp' : 'arrowDown', color: COLORS.mark, text: buy ? 'Buy' : 'Sell' });
       }
       const exit = t.closeTime === null ? null : barOf(t.closeTime);
       if (exit !== null && t.result !== null) {
         const won = t.result > 0;
-        out.push({ time: exit as UTCTimestamp, position: buy ? 'aboveBar' : 'belowBar', shape: 'circle', color: won ? COLORS.up : t.result < 0 ? COLORS.down : COLORS.text, text: `${t.result > 0 ? '+' : t.result < 0 ? '−' : ''}${Math.abs(t.result).toFixed(0)}` });
+        out.push({ time: exit as UTCTimestamp, position: buy ? 'aboveBar' : 'belowBar', shape: 'circle', color: won ? COLORS.up : t.result < 0 ? COLORS.down : COLORS.mark, text: `${t.result > 0 ? '+' : t.result < 0 ? '−' : ''}${Math.abs(t.result).toFixed(0)}` });
       }
     }
     // On a crowded chart the labels pile up, so only the shapes are kept.
@@ -189,7 +190,7 @@ export const chartPanel: PanelFactory = (body, footer, ctx) => {
     } else {
       lines.push(h('p', { class: 'dim' }, 'Nothing is loaded for this instrument. Import a price file to chart it.'));
     }
-    const open = h('button', { type: 'button', class: 'button' }, 'Open Files');
+    const open = h('button', { type: 'button', class: 'button' }, 'Import files');
     open.addEventListener('click', () => ctx.run('FILES'));
     lines.push(open);
     empty.replaceChildren(...lines);
@@ -216,7 +217,7 @@ export const chartPanel: PanelFactory = (body, footer, ctx) => {
 
     if (data.source.closeOnly) {
       // One value per day: a line is honest, flat candles would not be.
-      const line = chart.addSeries(LineSeries, { color: COLORS.gold, lineWidth: 2, priceFormat });
+      const line = chart.addSeries(LineSeries, { color: data.instrument === 'XAUUSD' ? COLORS.gold : COLORS.line, lineWidth: 2, priceFormat });
       line.setData(data.bars.map((b) => ({ time: b.time as UTCTimestamp, value: b.close })));
       series = line;
     } else {
@@ -231,18 +232,26 @@ export const chartPanel: PanelFactory = (body, footer, ctx) => {
       candles.setData(data.bars.map((b) => ({ time: b.time as UTCTimestamp, open: b.open, high: b.high, low: b.low, close: b.close })));
       series = candles;
     }
-    const markers = tradeMarkers(data);
+    const tradesOn = showTrades ?? (hub.journal?.demo === false || state.workspace === 'journal');
+    tradesToggle.setAttribute('aria-pressed', String(tradesOn));
+    tradesToggle.classList.toggle('active', tradesOn);
+    tradesToggle.hidden = hub.getTrades(data.instrument).length === 0;
+    const markers = tradesOn ? tradeMarkers(data) : [];
     if (markers.length > 0 && series) createSeriesMarkers(series, markers);
     demoNote.hidden = !(markers.length > 0 && hub.journal?.demo === true);
     chart.applyOptions({ timeScale: { timeVisible: !daily } });
+    const applyView = () => {
+      if (shown !== data) return;
+      chart.timeScale().fitContent();
+      if (data.bars.length > 300) chart.timeScale().setVisibleLogicalRange({ from: data.bars.length - 220, to: data.bars.length + 5 });
+    };
     if (sameView && keepWidth !== null) {
       // Replay step on the same chart: keep the zoom and follow the newest bar.
       chart.timeScale().setVisibleLogicalRange({ from: data.bars.length - keepWidth, to: data.bars.length + 5 });
     } else {
-      chart.timeScale().fitContent();
-      if (data.bars.length > 300) {
-        chart.timeScale().setVisibleLogicalRange({ from: data.bars.length - 220, to: data.bars.length + 5 });
-      }
+      applyView();
+      // A panel that was just opened may not have its size yet; fit once more when it does.
+      requestAnimationFrame(() => requestAnimationFrame(applyView));
     }
     const last = data.bars[data.bars.length - 1]!;
     writeLegend(last);
@@ -282,15 +291,8 @@ export const chartPanel: PanelFactory = (body, footer, ctx) => {
     }
     const { instrument, timeframe } = state.settings;
     const mine = ++ticket;
-    symbol.textContent = instrument;
+    symbol.textContent = `${instrument.slice(0, 3)}/${instrument.slice(3)} · ${timeframe}`;
     symbol.classList.toggle('gold', instrument === 'XAUUSD');
-    const available = new Set(hub.availableTimeframes(instrument));
-    for (const [tf, b] of tfButtons) {
-      b.classList.toggle('active', tf === timeframe);
-      b.classList.toggle('unavailable', !available.has(tf));
-      b.title = available.has(tf) ? '' : 'No data loaded for this timeframe';
-      b.setAttribute('aria-pressed', String(tf === timeframe));
-    }
     const data = await hub.getBars({ instrument, timeframe });
     if (mine !== ticket) return; // a newer request overtook this one
     if (data) show(data);

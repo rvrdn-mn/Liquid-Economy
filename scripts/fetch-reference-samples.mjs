@@ -73,7 +73,7 @@ for (const [instrument, rows] of series) {
 const manifest = {
   description:
     'Daily reference rates, one observation per day (open = high = low = close). Not intraday market prices: no daily range, weekends omitted.',
-  source: 'Frankfurter blended central-bank reference rates',
+  source: 'Frankfurter reference rates',
   sourceUrl: 'https://frankfurter.dev',
   licenceNote:
     'Frankfurter states its blended rates are its own calculation and free to use, including commercially, and that storing daily observations is encouraged.',

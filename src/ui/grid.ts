@@ -6,6 +6,7 @@ import { closePanel, leaves, setRatio, MIN_RATIO, MAX_RATIO, type LayoutNode } f
 import { PANELS, type PanelCode } from '../app/panels';
 import type { PanelContext, PanelFactory, PanelInstance } from '../panels/types';
 import { h } from './dom';
+import { icon } from './icons';
 
 interface Mounted {
   frame: HTMLElement;
@@ -14,6 +15,11 @@ interface Mounted {
 
 export class Grid {
   private readonly mounted = new Map<string, Mounted>();
+  private page = '';
+  /** Panel ids repeat from page to page, so a mounted panel is known by page and id. */
+  private key(id: string): string {
+    return `${this.page}:${id}`;
+  }
 
   constructor(
     private readonly root: HTMLElement,
@@ -25,8 +31,9 @@ export class Grid {
   }
 
   render(): void {
-    const { layout } = this.ctx.state;
-    const live = new Set(leaves(layout.root).map((l) => l.id));
+    const { layout, workspace } = this.ctx.state;
+    this.page = workspace;
+    const live = new Set(leaves(layout.root).map((l) => this.key(l.id)));
     for (const [id, m] of this.mounted) {
       if (live.has(id)) continue;
       m.instance.destroy();
@@ -35,7 +42,7 @@ export class Grid {
     }
     if (!layout.root) {
       this.root.replaceChildren(
-        h('div', { class: 'empty-desk' }, h('p', {}, 'No panels are open.'), h('p', { class: 'dim' }, 'Press / and type a panel code such as CHART, or HELP to see every command.')),
+        h('div', { class: 'empty-desk' }, h('p', {}, 'This page is empty.'), h('p', { class: 'dim' }, 'Press / and type a panel name such as CHART, or restore the page in Settings.')),
       );
       return;
     }
@@ -43,7 +50,7 @@ export class Grid {
   }
 
   flash(id: string): void {
-    const frame = this.mounted.get(id)?.frame;
+    const frame = this.mounted.get(this.key(id))?.frame;
     if (!frame) return;
     frame.classList.remove('flash');
     void frame.offsetWidth; // restart the animation
@@ -94,21 +101,35 @@ export class Grid {
   }
 
   private frame(id: string, code: PanelCode): HTMLElement {
-    const existing = this.mounted.get(id);
+    const existing = this.mounted.get(this.key(id));
     if (existing) return existing.frame;
 
     const info = PANELS[code];
     const body = h('div', { class: 'panel-body' });
     const footer = h('div', { class: 'panel-footer' });
-    const close = h('button', { class: 'panel-close', type: 'button', title: `Close ${info.title}`, 'aria-label': `Close ${info.title}` }, '×');
+    const about = h('button', { type: 'button', class: 'panel-tool', title: 'How to read this', 'aria-label': `How to read ${info.title}`, 'aria-pressed': 'false', hidden: true }, icon('info', 15));
+    const close = h('button', { type: 'button', class: 'panel-tool', title: `Close ${info.title}`, 'aria-label': `Close ${info.title}` }, icon('close', 15));
     close.addEventListener('click', () => this.ctx.state.setLayout(closePanel(this.ctx.state.layout, id)));
     const frame = h(
       'section',
-      { class: 'panel', 'data-panel': code },
-      h('header', { class: 'panel-header' }, h('span', { class: 'panel-title' }, info.title), h('span', { class: 'panel-code' }, code), close),
+      { class: 'panel', 'data-panel': code, 'aria-label': info.title },
+      h('header', { class: 'panel-header' }, h('h2', { class: 'panel-title' }, info.title), h('span', { class: 'panel-tools' }, about, close)),
       body,
       footer,
     );
+    // Explanations are written by each panel as ".note" paragraphs. They stay
+    // out of the way until asked for, so the numbers get the space.
+    about.addEventListener('click', () => {
+      const on = frame.classList.toggle('show-notes');
+      about.setAttribute('aria-pressed', String(on));
+    });
+    const watch = new MutationObserver(() => {
+      about.hidden = body.querySelector('.note:not(.warn)') === null;
+      footer.title = footer.textContent ?? '';
+    });
+    watch.observe(body, { childList: true, subtree: true });
+    watch.observe(footer, { childList: true, characterData: true, subtree: true });
+
     let instance: PanelInstance;
     try {
       instance = this.factories(code)(body, footer, this.ctx);
@@ -117,7 +138,14 @@ export class Grid {
       footer.textContent = 'Not running';
       instance = { destroy() {} };
     }
-    this.mounted.set(id, { frame, instance });
+    const destroy = instance.destroy.bind(instance);
+    instance = {
+      destroy() {
+        watch.disconnect();
+        destroy();
+      },
+    };
+    this.mounted.set(this.key(id), { frame, instance });
     return frame;
   }
 }

@@ -40,7 +40,7 @@ await writeFile(
     {
       yield: {
         path: 'us10y.csv',
-        label: 'US 10-year Treasury yield',
+        label: 'US 10-year yield',
         source: 'US Treasury daily par yield curve (saved copy)',
         sourceUrl: 'https://home.treasury.gov/resource-center/data-chart-center/interest-rates/TextView?type=daily_treasury_yield_curve',
         retrievedAt: new Date().toISOString(),

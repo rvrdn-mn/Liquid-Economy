@@ -42,7 +42,9 @@ describe('file clocks', () => {
 });
 
 import { AppState } from '../src/app/state';
-import { defaultLayout } from '../src/app/layout';
+import { leaves } from '../src/app/layout';
+import { parseWorkspaces } from '../src/app/state';
+import { defaultWorkspaceLayout, homeWorkspace, WORKSPACE_IDS, WORKSPACES } from '../src/app/workspaces';
 
 describe('changing settings', () => {
   it('refuses values outside their range and keeps the default instead', () => {
@@ -65,10 +67,67 @@ describe('changing settings', () => {
     expect(told).toBe(1);
   });
 
-  it('restores the starting layout', () => {
+  it('keeps a separate arrangement for each page', () => {
     const state = new AppState();
+    expect(state.workspace).toBe('overview');
     state.setLayout({ root: null, nextId: 9 });
+    state.setWorkspace('gold');
+    expect(leaves(state.layout.root).map((l) => l.panel)).toEqual(['LIQ', 'DRV']);
+    state.setWorkspace('overview');
+    expect(state.layout.root).toBeNull(); // the change to Overview was kept
     state.resetLayout();
-    expect(state.layout).toEqual(defaultLayout());
+    expect(state.layout).toEqual(defaultWorkspaceLayout('overview'));
+  });
+
+  it('tells listeners when the page changes, once', () => {
+    const state = new AppState();
+    let told = 0;
+    state.onLayout(() => told++);
+    state.setWorkspace('news');
+    state.setWorkspace('news');
+    expect(told).toBe(1);
+    state.resetAllLayouts();
+    expect(told).toBe(2);
+  });
+});
+
+describe('workspaces', () => {
+  const panels = (id: (typeof WORKSPACE_IDS)[number]) => leaves(defaultWorkspaceLayout(id).root).map((l) => l.panel);
+
+  it('gives every page a name, a summary and a valid starting arrangement', () => {
+    for (const id of WORKSPACE_IDS) {
+      expect(WORKSPACES[id].name.length, id).toBeGreaterThan(2);
+      const layout = defaultWorkspaceLayout(id);
+      const ids = leaves(layout.root).map((l) => l.id);
+      expect(new Set(ids).size, id).toBe(ids.length);
+      expect(layout.nextId, id).toBe(ids.length + 1);
+    }
+  });
+
+  it('opens on a calm first page: the chart, the weather map and the strength board', () => {
+    expect(panels('overview')).toEqual(['CHART', 'WX', 'STR']);
+    expect(panels('currencies')).toEqual(['WX', 'VOL', 'LINK', 'STR', 'SES']);
+    expect(panels('gold')).toEqual(['LIQ', 'DRV']);
+    expect(panels('journal')).toEqual(['JRN', 'CHART']);
+  });
+
+  it('knows which page a panel belongs to', () => {
+    expect(homeWorkspace('LIQ')).toBe('gold');
+    expect(homeWorkspace('WX')).toBe('currencies');
+    expect(homeWorkspace('CHART')).toBe('journal');
+    expect(homeWorkspace('SET')).toBe('settings');
+    expect(homeWorkspace('NEWS')).toBe('news');
+    expect(homeWorkspace('CAL')).toBeNull(); // not on any page
+  });
+
+  it('falls back page by page when saved arrangements are damaged', () => {
+    const good = defaultWorkspaceLayout('gold');
+    const saved = parseWorkspaces(JSON.stringify({ current: 'gold', layouts: { gold: { root: null, nextId: 5 }, news: { root: { type: 'leaf', id: 'p1', panel: 'NOPE' }, nextId: 2 } } }));
+    expect(saved.current).toBe('gold');
+    expect(saved.layouts.gold).toEqual({ root: null, nextId: 5 }); // a valid change is kept
+    expect(saved.layouts.news).toEqual(defaultWorkspaceLayout('news')); // a damaged one is replaced
+    expect(saved.layouts.overview).toEqual(defaultWorkspaceLayout('overview'));
+    expect(parseWorkspaces('garbage').layouts.gold).toEqual(good);
+    expect(parseWorkspaces(JSON.stringify({ current: 'moon' })).current).toBe('overview');
   });
 });

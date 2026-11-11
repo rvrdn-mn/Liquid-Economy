@@ -1,5 +1,6 @@
 /** Strength board: the eight currencies ranked strongest to weakest. Drawing only. */
 import { strengthView } from '../app/analysis';
+import { FX_PAIRS } from '../data/instruments';
 import type { Currency } from '../data/types';
 import { h } from '../ui/dom';
 import { asOfText, choiceBar, emptyState, live, loadedFooter, svg } from './common';
@@ -38,14 +39,15 @@ export const strengthPanel: PanelFactory = (body, footer, ctx) => {
   body.append(h('div', { class: 'panel-toolbar' }, h('span', { class: 'dim' }, 'Lookback'), lookback.el, tfNote), content);
 
   return live(ctx, async (current) => {
-    const { timeframe, strengthLookbackHours, displayZone } = state.settings;
+    const { strengthLookbackHours, displayZone } = state.settings;
+    const timeframe = hub.timeframeFor(FX_PAIRS, state.settings.timeframe, 1);
     lookback.set(strengthLookbackHours);
-    tfNote.textContent = `on ${timeframe} bars`;
+    tfNote.textContent = timeframe === state.settings.timeframe ? `on ${timeframe} bars` : `on ${timeframe} bars (no ${state.settings.timeframe} data for the pairs)`;
     const view = await strengthView(hub, timeframe, strengthLookbackHours);
     if (!current()) return;
 
     if (!view.now) {
-      content.replaceChildren(emptyState('Strength cannot be shown.', view.reason ?? '', { label: 'Open Files', run: () => ctx.run('FILES') }));
+      content.replaceChildren(emptyState('Strength cannot be shown.', view.reason ?? '', { label: 'Import files', run: () => ctx.run('FILES') }));
       footer.textContent = loadedFooter(view.loaded, displayZone, 28);
       return;
     }

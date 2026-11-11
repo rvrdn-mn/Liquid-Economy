@@ -24,15 +24,16 @@ const WINDOWS = [
 ] as const;
 
 const C = {
-  bg: '#080b10',
-  glass: '#2c3847',
-  glassLit: 'rgba(213, 220, 230, 0.16)',
-  text: '#d5dce6',
-  dim: '#7a8594',
-  up: '#3fb27f',
-  down: '#e0605a',
-  gold: [217, 164, 65] as const,
-  casing: '#05070a',
+  bg: '#0b0c0e',
+  glass: '#313740',
+  glassLit: 'rgba(232, 234, 237, 0.14)',
+  text: '#e8eaed',
+  dim: '#8a9099',
+  up: '#2fa87a',
+  down: '#e66767',
+  gold: [201, 162, 74] as const,
+  liquid: [132, 140, 152] as const,
+  casing: '#060708',
 };
 const rgba = (c: readonly [number, number, number], a: number) => `rgba(${c[0]}, ${c[1]}, ${c[2]}, ${a.toFixed(3)})`;
 const signed = (v: number, d: number) => `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(d)}`;
@@ -55,8 +56,8 @@ export const liquidPanel: PanelFactory = (body, footer, ctx) => {
   const windowBar = choiceBar<number>('Window in daily bars', WINDOWS, (bars) => state.update({ driverWindow: bars }));
   const canvas = h('canvas', { class: 'wx-layer', role: 'img', 'aria-label': 'Tanks for the dollar, the 10-year yield and risk mood, piped into a gold tank. The same readings are listed below.' });
   const host = h('div', { class: 'wx-host' }, canvas);
-  const readout = h('div', { class: 'wx-readout' });
-  const legend = h('p', { class: 'dim wx-legend' });
+  const readout = h('div', { class: 'wx-readout note' });
+  const legend = h('p', { class: 'note wx-legend' });
   const empty = h('div', { class: 'wx-empty', hidden: true });
   body.append(h('div', { class: 'panel-toolbar wx-toolbar' }, h('span', { class: 'dim' }, 'Window'), windowBar.el, h('span', { class: 'dim' }, 'daily bars')), host, empty, readout, legend);
 
@@ -107,7 +108,7 @@ export const liquidPanel: PanelFactory = (body, footer, ctx) => {
     const r = Math.min(10, w * 0.08);
     g.save();
     roundRect(g, x, y, w, hgt, r);
-    g.fillStyle = 'rgba(13, 17, 22, 0.9)';
+    g.fillStyle = 'rgba(17, 19, 23, 0.95)';
     g.fill();
     if (known && fill > 0) {
       g.clip();
@@ -141,7 +142,7 @@ export const liquidPanel: PanelFactory = (body, footer, ctx) => {
     g.restore();
     // Glass.
     roundRect(g, x, y, w, hgt, r);
-    g.strokeStyle = known ? C.glass : 'rgba(122, 133, 148, 0.5)';
+    g.strokeStyle = known ? C.glass : 'rgba(138, 144, 153, 0.5)';
     g.lineWidth = 1.5;
     if (!known) g.setLineDash([4, 4]);
     g.stroke();
@@ -153,7 +154,7 @@ export const liquidPanel: PanelFactory = (body, footer, ctx) => {
     g.lineTo(x + w * 0.1, y + hgt * 0.5);
     g.stroke();
     // Range marks: low, middle, high of the recent range.
-    g.strokeStyle = 'rgba(122, 133, 148, 0.45)';
+    g.strokeStyle = 'rgba(138, 144, 153, 0.45)';
     for (const mark of [0.06, 0.5, 0.94]) {
       const my = y + hgt * (1 - mark);
       g.beginPath();
@@ -223,7 +224,7 @@ export const liquidPanel: PanelFactory = (body, footer, ctx) => {
         g.lineDashOffset = 0;
       } else {
         g.setLineDash([3, 5]);
-        g.strokeStyle = 'rgba(122, 133, 148, 0.5)';
+        g.strokeStyle = 'rgba(138, 144, 153, 0.5)';
         g.lineWidth = 1;
         g.stroke(path);
         g.setLineDash([]);
@@ -234,12 +235,19 @@ export const liquidPanel: PanelFactory = (body, footer, ctx) => {
       const text = known ? `${signed(row.link!.r!, 2)} ${DIRECTION_WORDS[row.direction]}` : row.available ? `needs ${view!.window} days` : 'no data';
       g.font = mono(small, true);
       const tw = g.measureText(text).width;
-      g.fillStyle = 'rgba(7, 9, 12, 0.82)';
-      g.fillRect(mx - tw / 2 - 5, my - thick / 2 - small * 1.7, tw + 10, small * 1.45);
-      g.fillStyle = known ? rgba(s.color, 1) : C.dim;
-      g.textAlign = 'center';
+      const sw = known ? small * 0.75 : 0; // colour swatch beside the words
+      const boxW = tw + sw + (known ? 16 : 10);
+      const boxY = my - thick / 2 - small * 1.75;
+      g.fillStyle = 'rgba(11, 12, 14, 0.85)';
+      g.fillRect(mx - boxW / 2, boxY, boxW, small * 1.5);
+      if (known) {
+        g.fillStyle = rgba(s.color, 1);
+        g.fillRect(mx - boxW / 2 + 5, boxY + small * 0.4, sw, sw);
+      }
+      g.fillStyle = known ? C.text : C.dim;
+      g.textAlign = 'left';
       g.textBaseline = 'middle';
-      g.fillText(text, mx, my - thick / 2 - small * 0.95);
+      g.fillText(text, mx - boxW / 2 + (known ? sw + 11 : 5), boxY + small * 0.78);
     });
 
     // Driver tanks.
@@ -248,7 +256,7 @@ export const liquidPanel: PanelFactory = (body, footer, ctx) => {
       if (!s) return;
       const x = leftX;
       const y = top + slot * i + small * 1.4;
-      drawTank(g, x, y, tankW, tankH, s.fill, s.color, time, row.available);
+      drawTank(g, x, y, tankW, tankH, s.fill, C.liquid, time, row.available);
       g.textAlign = 'left';
       g.textBaseline = 'alphabetic';
       g.font = mono(small * 0.92);
@@ -320,9 +328,12 @@ export const liquidPanel: PanelFactory = (body, footer, ctx) => {
   const chip = (row: DriverRow): HTMLElement => {
     const r = row.link?.r ?? null;
     const direction: LinkDirection = row.available ? row.direction : 'none';
+    const swatch = h('span', { class: 'swatch', 'aria-hidden': 'true' });
+    swatch.style.background = `rgb(${DIRECTION_COLORS[direction].join(',')})`;
     const el = h(
       'span',
       { class: `wx-chip liq-chip dir-${direction}`, 'data-driver': row.id, 'data-direction': direction, 'data-r': r === null ? '' : r.toFixed(4), 'data-thickness': pipeThickness(r, 1000).toFixed(2) },
+      swatch,
       h('span', { class: 'wx-ccy' }, row.label),
     );
     if (!row.available) el.append(h('span', { class: 'dim' }, 'no data'));
@@ -347,7 +358,7 @@ export const liquidPanel: PanelFactory = (body, footer, ctx) => {
         view = null;
         host.hidden = true;
         empty.hidden = false;
-        empty.replaceChildren(emptyState('The liquid machine cannot be drawn.', next.reason ?? '', { label: 'Open Files', run: () => ctx.run('FILES') }));
+        empty.replaceChildren(emptyState('The liquid machine cannot be drawn.', next.reason ?? '', { label: 'Import files', run: () => ctx.run('FILES') }));
         readout.replaceChildren();
         legend.textContent = '';
         footer.textContent = 'No data loaded for this view.';
@@ -366,7 +377,7 @@ export const liquidPanel: PanelFactory = (body, footer, ctx) => {
       }
       const goldChip = h('span', { class: 'wx-chip', 'data-driver': 'gold' }, h('span', { class: 'wx-ccy gold' }, 'Gold'), h('span', { class: 'dim' }, next.gold.level === null ? '' : `level ${(next.gold.level * 100).toFixed(0)}%`));
       readout.replaceChildren(goldChip, ...next.rows.map(chip));
-      legend.textContent = `A thicker pipe is a stronger link with gold over the last ${driverWindow} days. Blue means the driver has moved with gold, violet against it. Each tank's level is where its latest value sits between its ${driverWindow}-day low and high.${next.gold.closeOnly ? ' Gold here is a daily reference rate that trails the market by about a day, so links are understated.' : ''}`;
+      legend.textContent = `A thicker pipe is a stronger link with gold over the last ${driverWindow} days. Blue means the driver has moved with gold, orange against it. Each tank's level is where its latest value sits between its ${driverWindow}-day low and high; the driver tanks are grey because only the pipes carry a meaning in colour.${next.gold.closeOnly ? ' Gold here is a daily reference rate that trails the market by about a day, so links are understated.' : ''}`;
       const lastDay = Math.max(...next.rows.map((r) => r.link?.lastTime ?? 0), next.gold.latest?.time ?? 0);
       footer.textContent = ['D1', `${driverWindow}-day window`, lastDay > 0 ? `to ${new Date(lastDay * 1000).toISOString().slice(0, 10)}` : '', next.replay ? 'replay' : '', `gold: ${next.gold.sourceLabel}`].filter(Boolean).join(' · ');
       anim.sync();

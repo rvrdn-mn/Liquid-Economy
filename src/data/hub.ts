@@ -328,7 +328,7 @@ export class DataHub {
     const now = Math.floor(Date.now() / 1000);
     const live = (points: DailySeries['points'], retrievedAt: number): DailySeries => ({
       id: 'yield',
-      label: 'US 10-year Treasury yield',
+      label: 'US 10-year yield',
       points,
       source: { adapter: 'treasury', label: 'US Treasury daily par yield curve', freshness: 'daily', asOf: points[points.length - 1]!.time, retrievedAt },
     });
@@ -578,6 +578,18 @@ export class DataHub {
       if (whole) this.derived.set(cacheKey, derived);
     }
     return derived ?? (await this.samples.getBars(req));
+  }
+
+  /**
+   * The timeframe a comparison panel should use. It is the selected one
+   * when at least `minCount` of the instruments have data for it; otherwise
+   * the next coarser timeframe that does. A page should not go blank just
+   * because intraday files exist for one instrument and not the others.
+   */
+  timeframeFor(instruments: readonly InstrumentId[], wanted: Timeframe, minCount: number): Timeframe {
+    const enough = (tf: Timeframe) => instruments.filter((id) => this.availableTimeframes(id).includes(tf)).length >= minCount;
+    if (enough(wanted)) return wanted;
+    return TIMEFRAMES.slice(TIMEFRAMES.indexOf(wanted) + 1).find(enough) ?? wanted;
   }
 
   /** Timeframes that have data for an instrument, for the empty state. */

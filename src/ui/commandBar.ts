@@ -23,7 +23,7 @@ export class CommandBar {
       autocomplete: 'off',
       autocapitalize: 'characters',
       'aria-label': 'Command',
-      placeholder: 'Press /  then an instrument, timeframe or panel. HELP lists everything.',
+      placeholder: 'Search or command',
     });
     this.list = h('ul', { class: 'command-suggestions', role: 'listbox', hidden: true });
     this.note = h('div', { class: 'command-note', 'aria-live': 'polite' });

@@ -27,7 +27,8 @@ export const helpPanel: PanelFactory = (body, footer, ctx) => {
   body.append(
     h('h3', {}, 'Getting started'),
     h('p', {}, 'Everything you see at first runs on the sample set: one reference rate per day for gold and the 28 major pairs. That is enough for the strength board, the weather map, the gold drivers and the liquid machine.'),
-    h('p', {}, 'For intraday charts, real volatility and the session profile, import one-minute price files in ', chip('FILES'), '. Files for XAUUSD and the seven dollar pairs cover everything. Try ', chip('RPL'), ' to replay a past day on every panel, and ', chip('SET'), ' to change any default.'),
+    h('p', {}, 'The sidebar has the pages: Overview, Currencies and Gold for analysis; Journal and News; Data for importing files. The instrument and timeframe at the top apply to every page. Replay, also at the top, rewinds every panel to a past moment.'),
+    h('p', {}, 'For intraday charts, real volatility and the session profile, import one-minute price files on the Data page. Files for XAUUSD and the seven dollar pairs cover everything. The small "i" on a panel explains how to read it.'),
     h('h3', {}, 'Command bar'),
     h('p', {}, 'Press ', h('kbd', {}, '/'), ' anywhere, type, then ', h('kbd', {}, 'Enter'), '. ', h('kbd', {}, 'Tab'), ' completes, ', h('kbd', {}, 'Esc'), ' leaves. Several commands can go on one line, for example ', chip('XAU H1'), '.'),
     h('h3', {}, 'Panels'),
@@ -37,7 +38,7 @@ export const helpPanel: PanelFactory = (body, footer, ctx) => {
     h('h3', {}, 'Instruments'),
     h('p', { class: 'chips' }, chip('XAU', 'Gold in US dollars'), ...FX_PAIRS.map((id) => chip(id))),
     h('h3', {}, 'Panels and layout'),
-    h('p', {}, 'Drag the line between two panels to resize them. The × in a panel header closes it. The layout, your settings and your imported files are saved in this browser.'),
+    h('p', {}, 'Drag the gap between two panels to resize them. The × on a panel closes it, and typing its code brings it back. Each page keeps its own arrangement. Pages, settings and imported files are saved in this browser.'),
     h('h3', {}, 'About the data'),
     h('p', {}, 'Every panel says where its data came from and how old it is. Nothing is shown as live unless it is. Missing data is shown as missing.'),
     h('p', {}, 'How each number is calculated: ', doc('calculations', 'docs/CALCULATIONS.md'), '. Where the data comes from, its delay and its terms: ', doc('data sources', 'docs/DATA_SOURCES.md'), '. Credits and licences: ', doc('third-party notices', 'THIRD_PARTY_NOTICES.md'), '.'),

@@ -12,21 +12,26 @@ import type { PanelFactory } from '../types';
 
 const NAMES: Record<Currency, string> = { USD: 'United States', EUR: 'Euro area', GBP: 'United Kingdom', JPY: 'Japan', CHF: 'Switzerland', AUD: 'Australia', CAD: 'Canada', NZD: 'New Zealand' };
 const C = {
-  bg: '#080b10',
-  glass: '#2c3847',
-  text: '#d5dce6',
-  dim: '#7a8594',
-  high: [79, 200, 225] as const,
-  low: [150, 132, 240] as const,
-  income: [120, 170, 200] as const,
-  spending: [96, 190, 160] as const,
-  savings: [217, 164, 65] as const,
-  trade: [170, 150, 220] as const,
+  bg: '#0b0c0e',
+  glass: '#313740',
+  text: '#e8eaed',
+  dim: '#8a9099',
+  high: [57, 135, 229] as const,
+  low: [217, 89, 38] as const,
+  mid: [86, 91, 99] as const,
+  income: [57, 135, 229] as const,
+  spending: [25, 158, 112] as const,
+  savings: [201, 133, 0] as const,
+  trade: [144, 133, 233] as const,
 };
 const rgba = (c: readonly [number, number, number], a: number) => `rgba(${c[0]}, ${c[1]}, ${c[2]}, ${a.toFixed(3)})`;
 const mono = (px: number, bold = false) => `${bold ? '600 ' : ''}${px}px ui-monospace, Menlo, Consolas, monospace`;
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
-const pressureColor = (p: number, a: number) => rgba(p >= 50 ? C.high : C.low, a * (0.3 + 0.7 * (Math.abs(p - 50) / 50)));
+const pressureColor = (p: number, a: number) => {
+  const k = Math.min(1, Math.abs(p - 50) / 50);
+  const pole = p >= 50 ? C.high : C.low;
+  return rgba([0, 1, 2].map((i) => Math.round(C.mid[i]! + (pole[i]! - C.mid[i]!) * k)) as [number, number, number], a);
+};
 
 /** Model time that passes per real second, and the size of each model step. */
 const SPEED = 1.2;
@@ -68,7 +73,7 @@ export const labPanel: PanelFactory = (body, footer) => {
     h('div', { class: 'panel-toolbar wx-toolbar' }, chipRow, h('label', { class: 'lab-slider' }, 'Interest rate ', rate, rateText), h('label', { class: 'lab-slider' }, 'Tax rate ', tax, taxText), reset),
     host,
     table,
-    h('p', { class: 'dim wx-legend' }, 'Raise one economy\'s interest rate: its people spend less and save more, savings arrive from the other seven, and its pressure rises. Raise its tax rate: spending moves from households to government. Pressure here belongs to the model only and has nothing to do with the weather map\'s market readings.'),
+    h('p', { class: 'note wx-legend' }, 'Raise one economy\'s interest rate: its people spend less and save more, savings arrive from the other seven, and its pressure rises. Raise its tax rate: spending moves from households to government. Pressure here belongs to the model only and has nothing to do with the weather map\'s market readings.'),
   );
 
   const syncControls = () => {
@@ -103,7 +108,7 @@ export const labPanel: PanelFactory = (body, footer) => {
     g.save();
     g.beginPath();
     g.rect(x, y, w, hgt);
-    g.fillStyle = 'rgba(13, 17, 22, 0.9)';
+    g.fillStyle = 'rgba(17, 19, 23, 0.95)';
     g.fill();
     g.clip();
     const surface = y + hgt * (1 - clamp01(level));
@@ -124,7 +129,7 @@ export const labPanel: PanelFactory = (body, footer) => {
     g.strokeRect(x, y, w, hgt);
     if (mid) {
       // The trade tank is half full when trade is balanced.
-      g.strokeStyle = 'rgba(213, 220, 230, 0.5)';
+      g.strokeStyle = 'rgba(232, 234, 237, 0.45)';
       g.setLineDash([3, 3]);
       g.beginPath();
       g.moveTo(x, y + hgt / 2);
@@ -196,9 +201,9 @@ export const labPanel: PanelFactory = (body, footer) => {
 
     // Right: the eight economies and the money moving between them.
     const cx = leftW + (width - leftW) / 2;
-    const cy = height / 2 + small * 0.6;
-    const rx = (width - leftW) / 2 - small * 4.2;
-    const ry = height / 2 - small * 3.6;
+    const cy = height / 2 + small * 1.1;
+    const rx = (width - leftW) / 2 - small * 4.6;
+    const ry = height / 2 - small * 5.4;
     g.font = mono(small * 0.95);
     g.fillStyle = C.dim;
     g.textAlign = 'left';

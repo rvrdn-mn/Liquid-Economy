@@ -114,7 +114,7 @@ export const sessionPanel: PanelFactory = (body, footer, ctx) => {
     nodes.push(h('h3', {}, `${view.instrument} average hourly range`));
     if (!profile) {
       nodes.push(h('p', { class: 'dim' }, view.reason ?? 'No data.'));
-      const b = h('button', { type: 'button', class: 'button' }, 'Open Files');
+      const b = h('button', { type: 'button', class: 'button' }, 'Import files');
       b.addEventListener('click', () => ctx.run('FILES'));
       nodes.push(b);
       footer.textContent = 'Session hours are clock facts. No price data shown.';

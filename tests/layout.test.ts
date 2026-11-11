@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { closePanel, defaultLayout, findPanel, leaves, openPanel, parseLayout, setRatio, type Layout } from '../src/app/layout';
+import { closePanel, findPanel, leaves, openPanel, parseLayout, setRatio, type Layout } from '../src/app/layout';
 
 /** A small layout for testing the mechanics: chart (70%) beside files. */
 const twoPanels = (): Layout => ({
@@ -10,14 +10,6 @@ const twoPanels = (): Layout => ({
 const codes = (l: Layout) => leaves(l.root).map((x) => x.panel);
 
 describe('layout', () => {
-  it('starts a new visitor with the chart and the two signature views', () => {
-    const l = defaultLayout();
-    expect(codes(l)).toEqual(['CHART', 'STR', 'DRV', 'WX', 'LIQ']);
-    expect(new Set(leaves(l.root).map((x) => x.id)).size).toBe(5);
-    expect(parseLayout(JSON.stringify(l))).toEqual(l); // it is itself a valid saved layout
-    expect(openPanel(l, 'FILES').id).toBe('p6');
-  });
-
   it('opens a panel by splitting the roomiest one', () => {
     const { layout, id } = openPanel(twoPanels(), 'STR');
     expect(codes(layout)).toEqual(['CHART', 'STR', 'FILES']);

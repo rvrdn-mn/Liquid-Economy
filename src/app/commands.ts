@@ -12,6 +12,7 @@
 import { TIMEFRAMES, type InstrumentId, type Timeframe } from '../data/types';
 import { FX_PAIRS, GOLD, normaliseSymbol } from '../data/instruments';
 import { PANELS, PANEL_CODES, isPanelCode, type PanelCode } from './panels';
+import { WORKSPACES, type WorkspaceId } from './workspaces';
 
 export interface Suggestion {
   /** What to type. */
@@ -23,6 +24,7 @@ export type Command =
   | { kind: 'instrument'; instrument: InstrumentId }
   | { kind: 'timeframe'; timeframe: Timeframe }
   | { kind: 'panel'; code: PanelCode }
+  | { kind: 'page'; page: WorkspaceId }
   | { kind: 'unknown'; input: string; suggestions: Suggestion[] };
 
 const TIMEFRAME_NAMES: Record<Timeframe, string> = {
@@ -35,8 +37,15 @@ const TIMEFRAME_NAMES: Record<Timeframe, string> = {
 
 const pairLabel = (id: InstrumentId) => (id === GOLD ? 'Gold in US dollars' : `${id.slice(0, 3)} / ${id.slice(3)}`);
 
+/**
+ * Pages that can be opened by name. The others are reached by a panel code
+ * of the same meaning (NEWS, LAB, HELP), and GOLD stays the instrument.
+ */
+export const PAGE_WORDS: Record<string, WorkspaceId> = { OVERVIEW: 'overview', CURRENCIES: 'currencies', JOURNAL: 'journal', DATA: 'data', SETTINGS: 'settings' };
+
 /** Everything the bar understands, in the order HELP lists it. */
 export const VOCABULARY: readonly Suggestion[] = [
+  ...Object.entries(PAGE_WORDS).map(([word, id]) => ({ text: word, description: `Page: ${WORKSPACES[id].summary}` })),
   ...PANEL_CODES.map((code) => ({ text: code, description: `${PANELS[code].title}: ${PANELS[code].description}` })),
   ...TIMEFRAMES.map((tf) => ({ text: tf, description: TIMEFRAME_NAMES[tf] })),
   { text: 'XAU', description: pairLabel(GOLD) },
@@ -46,6 +55,8 @@ export const VOCABULARY: readonly Suggestion[] = [
 function parseToken(token: string): Command | null {
   const upper = token.toUpperCase();
   if (isPanelCode(upper)) return { kind: 'panel', code: upper };
+  const page = PAGE_WORDS[upper];
+  if (page) return { kind: 'page', page };
   const tf = TIMEFRAMES.find((t) => t === upper);
   if (tf) return { kind: 'timeframe', timeframe: tf };
   const instrument = normaliseSymbol(token);

@@ -76,8 +76,8 @@ export const settingsPanel: PanelFactory = (body, footer, ctx) => {
   }
 
   // --- layout and stored data
-  const resetLayout = h('button', { type: 'button', class: 'button' }, 'Restore the starting layout');
-  resetLayout.addEventListener('click', () => state.resetLayout());
+  const resetLayout = h('button', { type: 'button', class: 'button' }, 'Restore every page to its starting arrangement');
+  resetLayout.addEventListener('click', () => state.resetAllLayouts());
   const clear = h('button', { type: 'button', class: 'button' }, 'Remove everything I imported');
   const stored = h('p', { class: 'dim' });
   let armed = false;
@@ -112,7 +112,7 @@ export const settingsPanel: PanelFactory = (body, footer, ctx) => {
     h('h3', {}, 'Watchlist for linked pairs'),
     watch,
     h('p', {}, watchNote),
-    h('h3', {}, 'Layout'),
+    h('h3', {}, 'Pages'),
     h('p', {}, resetLayout),
     h('h3', {}, 'Stored in this browser'),
     stored,
