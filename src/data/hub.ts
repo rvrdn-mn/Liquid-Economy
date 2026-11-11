@@ -533,6 +533,28 @@ export class DataHub {
     else this.changed();
   }
 
+  /** Remove everything the user imported: price files, the risk-mood file and the trade history. */
+  async clearImported(): Promise<void> {
+    for (const s of this.files.list()) {
+      this.files.remove(s.instrument, s.barSeconds);
+      try {
+        await fileStore.remove(`${s.instrument}|${s.barSeconds}`);
+      } catch {
+        /* keep going: memory is cleared either way */
+      }
+    }
+    this.drivers.delete('risk');
+    this.journal = this.demoJournal;
+    for (const id of [RISK_FILE_ID, JOURNAL_FILE_ID]) {
+      try {
+        await fileStore.remove(id);
+      } catch {
+        /* as above */
+      }
+    }
+    this.changed();
+  }
+
   importedFiles(): ImportedSeries[] {
     return this.files.list();
   }

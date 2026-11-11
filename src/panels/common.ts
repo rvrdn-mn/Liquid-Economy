@@ -3,6 +3,16 @@ import type { Loaded } from '../app/analysis';
 import { formatAge, formatDate, formatDateTime, h, zoneLabel, type Zone } from '../ui/dom';
 import type { PanelContext, PanelInstance } from './types';
 
+/** Somewhere to send an unexpected failure so the user is told, set by main. */
+let problemSink: (message: string) => void = () => {};
+export function onProblem(sink: (message: string) => void): void {
+  problemSink = sink;
+}
+export function reportProblem(err: unknown): void {
+  console.error(err);
+  problemSink(err instanceof Error ? err.message : String(err));
+}
+
 /**
  * Re-run `refresh` whenever settings or data change. Each run gets a
  * `current()` check so a slow run that was overtaken can stop quietly.
@@ -11,7 +21,12 @@ export function live(ctx: PanelContext, refresh: (current: () => boolean) => Pro
   let ticket = 0;
   const run = () => {
     const mine = ++ticket;
-    void refresh(() => mine === ticket);
+    try {
+      const result = refresh(() => mine === ticket);
+      if (result) result.catch(reportProblem);
+    } catch (err) {
+      reportProblem(err);
+    }
   };
   const offSettings = ctx.state.onSettings(run);
   const offData = ctx.hub.onChange(run);

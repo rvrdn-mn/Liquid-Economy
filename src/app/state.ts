@@ -112,8 +112,9 @@ export class AppState {
   private readonly settingsListeners = new Set<Listener>();
   private readonly layoutListeners = new Set<Listener>();
 
+  /** Change settings. Values outside their allowed range fall back to the default. */
   update(patch: Partial<Settings>): void {
-    this.settings = { ...this.settings, ...patch };
+    this.settings = parseSettings(JSON.stringify({ ...this.settings, ...patch }));
     write(SETTINGS_KEY, JSON.stringify(this.settings));
     this.settingsListeners.forEach((fn) => fn());
   }
@@ -124,6 +125,16 @@ export class AppState {
     this.layout = layout;
     write(LAYOUT_KEY, JSON.stringify(layout));
     if (!quiet) this.layoutListeners.forEach((fn) => fn());
+  }
+
+  /** Put every setting back to its default, keeping the selected instrument and timeframe. */
+  resetSettings(): void {
+    const { instrument, timeframe } = this.settings;
+    this.update({ ...DEFAULT_SETTINGS, watchlist: [...DEFAULT_SETTINGS.watchlist], instrument, timeframe });
+  }
+
+  resetLayout(): void {
+    this.setLayout(defaultLayout());
   }
 
   onSettings(fn: Listener): () => void {

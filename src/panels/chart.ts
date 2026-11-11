@@ -160,6 +160,8 @@ export const chartPanel: PanelFactory = (body, footer, ctx) => {
         out.push({ time: exit as UTCTimestamp, position: buy ? 'aboveBar' : 'belowBar', shape: 'circle', color: won ? COLORS.up : t.result < 0 ? COLORS.down : COLORS.text, text: `${t.result > 0 ? '+' : t.result < 0 ? '−' : ''}${Math.abs(t.result).toFixed(0)}` });
       }
     }
+    // On a crowded chart the labels pile up, so only the shapes are kept.
+    if (out.length > 16) for (const m of out) delete m.text;
     return out.sort((a, b) => (a.time as number) - (b.time as number));
   };
 

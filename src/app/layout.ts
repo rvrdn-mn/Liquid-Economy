@@ -30,16 +30,21 @@ export const MIN_RATIO = 0.1;
 export const MAX_RATIO = 0.9;
 const clamp = (r: number) => Math.min(MAX_RATIO, Math.max(MIN_RATIO, r));
 
+/**
+ * What a first-time visitor sees: the chart and the two signature views,
+ * with the strength board and gold drivers beside them.
+ */
 export function defaultLayout(): Layout {
+  const leaf = (n: number, panel: PanelCode): Leaf => ({ type: 'leaf', id: `p${n}`, panel });
   return {
     root: {
       type: 'split',
       dir: 'row',
-      ratio: 0.7,
-      a: { type: 'leaf', id: 'p1', panel: 'CHART' },
-      b: { type: 'leaf', id: 'p2', panel: 'FILES' },
+      ratio: 0.46,
+      a: { type: 'split', dir: 'column', ratio: 0.56, a: leaf(1, 'CHART'), b: { type: 'split', dir: 'row', ratio: 0.5, a: leaf(2, 'STR'), b: leaf(3, 'DRV') } },
+      b: { type: 'split', dir: 'column', ratio: 0.56, a: leaf(4, 'WX'), b: leaf(5, 'LIQ') },
     },
-    nextId: 3,
+    nextId: 6,
   };
 }
 

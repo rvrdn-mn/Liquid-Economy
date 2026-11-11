@@ -19,6 +19,8 @@ import { volatilityPanel } from './panels/volatility';
 import { weatherPanel } from './panels/weather';
 import { placeholderPanel } from './panels/placeholder';
 import { replayPanel } from './panels/replay';
+import { settingsPanel } from './panels/settings';
+import { onProblem } from './panels/common';
 import type { PanelContext, PanelFactory } from './panels/types';
 import { CommandBar } from './ui/commandBar';
 import { Grid } from './ui/grid';
@@ -44,6 +46,7 @@ const built: Partial<Record<PanelCode, PanelFactory>> = {
   LIQ: liquidPanel,
   JRN: journalPanel,
   NEWS: newsPanel,
+  SET: settingsPanel,
 };
 const factories = (code: PanelCode): PanelFactory => built[code] ?? placeholderPanel(code);
 
@@ -127,14 +130,28 @@ const syncLive = () => {
 };
 state.onSettings(syncLive);
 
+// Problems are said out loud in the status bar, never left only in the console.
+const notice = h('span', { class: 'notice', hidden: true, role: 'status' });
+const dismiss = h('button', { type: 'button', class: 'notice-close', title: 'Dismiss', 'aria-label': 'Dismiss this message' }, '×');
+const showNotice = (text: string) => {
+  notice.replaceChildren(text, ' ', dismiss);
+  notice.hidden = false;
+};
+dismiss.addEventListener('click', () => (notice.hidden = true));
+onProblem((message) => showNotice(`A panel hit a problem: ${message}`));
+window.addEventListener('error', (ev) => showNotice(`Something went wrong: ${ev.message}`));
+window.addEventListener('unhandledrejection', (ev) => showNotice(`Something went wrong: ${ev.reason instanceof Error ? ev.reason.message : String(ev.reason)}`));
+
 const desk = h('main', { class: 'desk' });
 document.getElementById('app')!.append(
   h('header', { class: 'topbar' }, h('span', { class: 'brand' }, 'Liquid Markets Desk'), bar.el, replayMark, ticker, selection),
   desk,
-  h('footer', { class: 'statusbar' }, h('span', {}, 'For market context only. Not financial advice.'), h('span', { class: 'dim' }, 'Press / for commands · HELP lists everything')),
+  h('footer', { class: 'statusbar' }, h('span', {}, 'For market context only. Not financial advice.'), notice, h('span', { class: 'dim' }, 'Press / for commands · HELP lists everything')),
 );
 
 grid = new Grid(desk, ctx, factories);
 renderTicker();
 syncLive();
-void hub.start();
+void hub.start().then(() => {
+  if (hub.startupErrors.length > 0) showNotice(`${hub.startupErrors.length === 1 ? hub.startupErrors[0] : `${hub.startupErrors.length} things could not be loaded`}. See the Files panel.`);
+});

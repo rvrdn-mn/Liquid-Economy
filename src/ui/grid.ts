@@ -109,7 +109,14 @@ export class Grid {
       body,
       footer,
     );
-    const instance = this.factories(code)(body, footer, this.ctx);
+    let instance: PanelInstance;
+    try {
+      instance = this.factories(code)(body, footer, this.ctx);
+    } catch (err) {
+      body.replaceChildren(h('div', { class: 'panel-empty' }, h('p', { class: 'empty-title' }, `${info.title} could not start.`), h('p', { class: 'dim' }, (err as Error).message), h('p', { class: 'dim' }, 'The other panels are not affected. Closing and reopening this one may help.')));
+      footer.textContent = 'Not running';
+      instance = { destroy() {} };
+    }
     this.mounted.set(id, { frame, instance });
     return frame;
   }

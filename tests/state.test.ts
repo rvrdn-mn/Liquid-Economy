@@ -40,3 +40,35 @@ describe('file clocks', () => {
     expect(wallClockToUtc(at(2026, 1, 5, 7), 0)).toBe(at(2026, 1, 5, 7));
   });
 });
+
+import { AppState } from '../src/app/state';
+import { defaultLayout } from '../src/app/layout';
+
+describe('changing settings', () => {
+  it('refuses values outside their range and keeps the default instead', () => {
+    const state = new AppState();
+    state.update({ atrPeriod: 21, correlationThreshold: 0.7 });
+    expect(state.settings).toMatchObject({ atrPeriod: 21, correlationThreshold: 0.7 });
+    state.update({ atrPeriod: -5, correlationThreshold: 4, watchlist: ['XAUUSD'] });
+    expect(state.settings.atrPeriod).toBe(DEFAULT_SETTINGS.atrPeriod);
+    expect(state.settings.correlationThreshold).toBe(DEFAULT_SETTINGS.correlationThreshold);
+    expect(state.settings.watchlist).toEqual(DEFAULT_SETTINGS.watchlist);
+  });
+
+  it('resets settings but keeps what is being looked at', () => {
+    const state = new AppState();
+    state.update({ instrument: 'GBPJPY', timeframe: 'H4', driverWindow: 60, liveGold: false, displayZone: 'utc' });
+    let told = 0;
+    state.onSettings(() => told++);
+    state.resetSettings();
+    expect(state.settings).toEqual({ ...DEFAULT_SETTINGS, instrument: 'GBPJPY', timeframe: 'H4' });
+    expect(told).toBe(1);
+  });
+
+  it('restores the starting layout', () => {
+    const state = new AppState();
+    state.setLayout({ root: null, nextId: 9 });
+    state.resetLayout();
+    expect(state.layout).toEqual(defaultLayout());
+  });
+});

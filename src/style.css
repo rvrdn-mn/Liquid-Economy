@@ -219,3 +219,32 @@ input[type='datetime-local'] { background: var(--raised); border: 1px solid var(
 .news a { color: var(--text); text-decoration: none; }
 .news a:hover { color: var(--accent); text-decoration: underline; }
 .news .ccy-tag { color: var(--accent); font-weight: 600; }
+
+/* Settings */
+.settings-table td { white-space: normal; vertical-align: middle; padding-top: 4px; padding-bottom: 4px; }
+.settings-table td.wrap { font-family: var(--sans); font-size: 12px; }
+.num-input { width: 78px; background: var(--raised); border: 1px solid var(--border); padding: 1px 4px; font-family: var(--mono); }
+.num-input.invalid { border-color: var(--down); }
+.watchlist { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 2px 8px; }
+.watch-item { font-family: var(--mono); font-size: 11px; white-space: nowrap; }
+.button.danger { border-color: var(--down); color: var(--down); }
+.panel-body a { color: var(--accent); }
+
+/* Status notices */
+.notice { color: var(--gold); overflow: hidden; text-overflow: ellipsis; }
+.notice[hidden] { display: none; }
+.notice-close { background: none; border: 0; color: var(--dim); cursor: pointer; padding: 0 4px; }
+
+/* Narrow screens: panels stack and the desk scrolls */
+@media (max-width: 760px) {
+  body { overflow: auto; }
+  #app { height: auto; min-height: 100%; }
+  .topbar { flex-wrap: wrap; height: auto; padding: 6px 10px; gap: 6px 12px; }
+  .command-bar { flex-basis: 100%; order: 3; }
+  .desk { display: block; }
+  .split, .split.row, .split.column { display: block; height: auto; }
+  .pane { display: block; flex: none !important; }
+  .splitter { display: none; }
+  .panel { height: 440px; margin-bottom: 3px; }
+  .statusbar { flex-wrap: wrap; height: auto; white-space: normal; }
+}

@@ -1,7 +1,7 @@
 /** The panel catalogue: codes typed in the command bar and what they open. */
 
 export const PANEL_CODES = [
-  'CHART', 'STR', 'WX', 'DRV', 'LIQ', 'SES', 'VOL', 'LINK', 'CAL', 'NEWS', 'JRN', 'RPL', 'FILES', 'HELP',
+  'CHART', 'STR', 'WX', 'DRV', 'LIQ', 'SES', 'VOL', 'LINK', 'CAL', 'NEWS', 'JRN', 'RPL', 'FILES', 'SET', 'LAB', 'HELP',
 ] as const;
 export type PanelCode = (typeof PANEL_CODES)[number];
 
@@ -16,7 +16,9 @@ export interface PanelInfo {
 export const PANELS: Record<PanelCode, PanelInfo> = {
   CHART: { code: 'CHART', title: 'Chart', description: 'Candlesticks for the selected instrument' },
   FILES: { code: 'FILES', title: 'Files', description: 'Import and manage price files' },
+  SET: { code: 'SET', title: 'Settings', description: 'Time, calculation defaults, watchlist, layout and stored data' },
   HELP: { code: 'HELP', title: 'Help', description: 'Every command' },
+  LAB: { code: 'LAB', title: 'Liquid Economy lab', description: 'A what-if teaching model of money flowing between economies. Not market data' },
   STR: { code: 'STR', title: 'Strength board', description: 'Eight currencies ranked strongest to weakest' },
   VOL: { code: 'VOL', title: 'Volatility', description: 'Each pair against its own recent average' },
   SES: { code: 'SES', title: 'Session clock', description: 'Asia, London and New York on a 24-hour dial' },
