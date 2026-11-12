@@ -163,7 +163,7 @@ given only what was known at that moment:
   only once that bar has finished.
 - Comparisons between instruments use finished bars only.
 
-Each step moves one bar of the selected timeframe. A gold REPLAY marker
+Each step moves one bar of the selected timeframe. A REPLAY marker
 stays in the top bar for as long as replay is on.
 
 ## Liquid Economy lab (LAB)
@@ -204,7 +204,8 @@ Backgrounds are neutral blacks and slate greys. Colour is kept for meaning:
   weather map, with gold and against gold in the gold views, together and
   opposite in linked pairs. Grey is the middle.
 - **Green and red** mean up and down, always with an arrow or a sign.
-- **Gold** is gold itself, plus the replay and demo markers.
+- **White** is the gold tank, the price line, and the replay and demo
+  markers. There is no orange and no yellow.
 
 Text is always a neutral ink, with a coloured mark beside it where
 identity matters, so nothing depends on reading coloured words.

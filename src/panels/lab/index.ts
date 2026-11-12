@@ -21,7 +21,8 @@ const C = {
   mid: [86, 91, 99] as const,
   income: [44, 154, 216] as const,
   spending: [25, 158, 112] as const,
-  savings: [201, 133, 0] as const,
+  savings: [170, 150, 236] as const,
+  flow: [214, 218, 224] as const,
   trade: [150, 158, 170] as const,
 };
 const rgba = (c: readonly [number, number, number], a: number) => `rgba(${c[0]}, ${c[1]}, ${c[2]}, ${a.toFixed(3)})`;
@@ -217,7 +218,7 @@ export const labPanel: PanelFactory = (body, footer) => {
       const [x0, y0] = at(f.from);
       const [x1, y1] = at(f.to);
       const share = f.amount / biggest;
-      g.strokeStyle = rgba(C.savings, 0.15 + 0.3 * share);
+      g.strokeStyle = rgba(C.flow, 0.1 + 0.22 * share);
       g.lineWidth = 1 + 5 * share;
       g.beginPath();
       g.moveTo(x0, y0);
@@ -226,7 +227,7 @@ export const labPanel: PanelFactory = (body, footer) => {
       const len = Math.hypot(x1 - x0, y1 - y0);
       g.setLineDash([6, 12]);
       g.lineDashOffset = -dash * (30 + 90 * share) * (len > 0 ? 1 : 0);
-      g.strokeStyle = rgba(C.savings, 0.9);
+      g.strokeStyle = rgba(C.flow, 0.85);
       g.lineWidth = Math.max(1, 0.6 + 2.4 * share);
       g.beginPath();
       g.moveTo(x0, y0);

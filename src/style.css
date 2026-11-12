@@ -5,7 +5,8 @@
  * forward. Colour is kept for meaning only:
  *   blue / purple   the two ends of a scale (strong / weak, with / against)
  *   green / red     up and down
- *   gold            gold itself, and the replay and demo markers
+ *   white           gold's own tank and line, and the replay and demo markers
+ * There is no orange and no yellow anywhere.
  * Text is always a neutral ink; a coloured mark beside it carries identity.
  */
 :root {
@@ -22,7 +23,6 @@
   --faint: #5d636c;
   --blue: #2c9ad8;
   --purple: #a15fe0;
-  --gold: #c9a24a;
   --up: #2fa87a;
   --down: #e66767;
   --radius: 10px;
@@ -45,9 +45,9 @@ h1, h2, h3, p { margin: 0; }
 .dim, .muted { color: var(--muted); }
 .up { color: var(--up); }
 .down { color: var(--down); }
-.gold { color: var(--gold); }
+.gold { color: var(--text); }
 .error { color: var(--down); }
-.warn { color: var(--gold); }
+.warn { color: var(--text-2); }
 .ok { color: var(--text-2); }
 .mono { font-family: var(--mono); font-size: 12px; font-variant-numeric: tabular-nums; }
 
@@ -57,7 +57,7 @@ h1, h2, h3, p { margin: 0; }
 
 .sidebar { display: flex; flex-direction: column; gap: 14px; padding: 16px 10px 12px; border-right: 1px solid var(--border); background: var(--bg); min-height: 0; overflow-y: auto; }
 .brand { display: flex; align-items: center; gap: 9px; padding: 2px 8px 8px; }
-.brand-mark { width: 9px; height: 9px; border-radius: 2px; background: var(--gold); transform: rotate(45deg); flex: none; }
+.brand-mark { width: 9px; height: 9px; border-radius: 2px; background: var(--blue); transform: rotate(45deg); flex: none; }
 .brand-name { font-size: 13px; font-weight: 600; letter-spacing: 0.01em; color: var(--text); white-space: nowrap; }
 .nav-group { display: flex; flex-direction: column; gap: 1px; }
 .nav-heading { padding: 0 8px 5px; font-size: 11px; color: var(--faint); letter-spacing: 0.04em; }
@@ -92,7 +92,7 @@ kbd { font-family: var(--mono); font-size: 11px; background: var(--surface-2); b
 .chip { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; color: var(--text-2); font-family: var(--mono); font-size: 11.5px; cursor: pointer; }
 .chip:hover { border-color: var(--border-strong); color: var(--text); }
 .tag, .replay-tag { display: inline-block; padding: 1px 6px; border-radius: 4px; font-family: var(--mono); font-size: 10.5px; font-weight: 600; letter-spacing: 0.03em; }
-.tag-gold, .replay-tag { background: var(--gold); color: #14110a; }
+.tag-gold, .replay-tag { background: var(--text); color: #0b0c0e; }
 
 /* Segmented controls (timeframes, lookbacks, windows) */
 .segmented, .tf-bar { display: inline-flex; padding: 2px; gap: 1px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); }
@@ -106,7 +106,7 @@ kbd { font-family: var(--mono); font-size: 11px; background: var(--surface-2); b
 .picker-button { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 8px 0 11px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: pointer; color: var(--muted); }
 .picker-button:hover { border-color: var(--border-strong); }
 .picker-symbol { font-family: var(--mono); font-weight: 600; font-size: 13px; color: var(--text); }
-.picker-symbol.gold { color: var(--gold); }
+.picker-symbol.gold { color: var(--text); }
 .picker-popover { position: absolute; top: 36px; left: 0; z-index: 40; width: 250px; background: var(--surface-2); border: 1px solid var(--border-strong); border-radius: var(--radius); box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55); overflow: hidden; }
 .picker-search { width: 100%; height: 36px; padding: 0 12px; background: none; border: 0; border-bottom: 1px solid var(--border); outline: none; }
 .picker-list { max-height: 340px; overflow-y: auto; padding: 4px; }
@@ -139,8 +139,8 @@ kbd { font-family: var(--mono); font-size: 11px; background: var(--surface-2); b
 .ticker-name { color: var(--muted); }
 .ticker-price { font-family: var(--mono); font-weight: 600; color: var(--text); }
 .ticker-age { color: var(--faint); font-size: 11px; }
-.ticker.stale .ticker-dot { background: var(--gold); }
-.ticker.stale .ticker-age { color: var(--gold); }
+.ticker.stale .ticker-dot { background: var(--faint); }
+.ticker.stale .ticker-age { color: var(--text); }
 .ticker.waiting { color: var(--muted); }
 
 /* Replay bar */
@@ -150,10 +150,10 @@ kbd { font-family: var(--mono); font-size: 11px; background: var(--surface-2); b
 .replay-when { font-family: var(--mono); font-size: 12px; }
 
 /* First-visit hint and notices */
-.hint { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 0 16px 10px; padding: 10px 14px; background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--gold); border-radius: var(--radius); color: var(--text-2); }
+.hint { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 0 16px 10px; padding: 10px 14px; background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--blue); border-radius: var(--radius); color: var(--text-2); }
 .hint strong { color: var(--text); font-weight: 600; }
 .hint-actions { display: flex; gap: 6px; flex: none; }
-.toast { position: fixed; right: 16px; bottom: 16px; z-index: 60; display: flex; align-items: center; gap: 10px; max-width: 460px; padding: 10px 12px; background: var(--surface-2); border: 1px solid var(--border-strong); border-left: 3px solid var(--gold); border-radius: var(--radius); box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55); }
+.toast { position: fixed; right: 16px; bottom: 16px; z-index: 60; display: flex; align-items: center; gap: 10px; max-width: 460px; padding: 10px 12px; background: var(--surface-2); border: 1px solid var(--border-strong); border-left: 3px solid var(--blue); border-radius: var(--radius); box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55); }
 
 /* ------------------------------------------------------ desk and panels */
 .desk { flex: 1; min-height: 0; display: flex; padding: 0 12px 12px; }
@@ -191,8 +191,8 @@ kbd { font-family: var(--mono); font-size: 11px; background: var(--surface-2); b
 .note.warn { display: block; }
 .panel.show-notes .note { display: block; }
 .note { margin-top: 10px; max-width: 72ch; color: var(--muted); font-size: 12px; }
-/* A caution is always visible, but quiet: one gold bar at its edge instead of gold text. */
-.warn.note, p.warn { color: var(--text-2); font-size: 12px; padding-left: 10px; border-left: 2px solid var(--gold); max-width: 72ch; }
+/* A caution is always visible, but quiet: a pale bar at its edge. */
+.warn.note, p.warn { color: var(--text-2); font-size: 12px; padding-left: 10px; border-left: 2px solid var(--text-2); max-width: 72ch; }
 
 /* Panel contents */
 .panel-body p { margin: 0 0 8px; }

@@ -76,7 +76,6 @@ export function createInstrumentPicker(state: AppState, hub: DataHub): HTMLEleme
 
   const sync = () => {
     label.textContent = prettySymbol(state.settings.instrument);
-    label.classList.toggle('gold', state.settings.instrument === GOLD);
   };
   state.onSettings(sync);
   sync();

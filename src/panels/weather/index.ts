@@ -48,7 +48,7 @@ const COLORS = {
   up: '#2fa87a',
   down: '#e66767',
   cloud: [214, 218, 224] as const,
-  bolt: '#f2d27a',
+  bolt: '#eef1f5',
 };
 
 const GRID_COLS = 132;

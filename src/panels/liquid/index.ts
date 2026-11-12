@@ -31,7 +31,8 @@ const C = {
   dim: '#8a9099',
   up: '#2fa87a',
   down: '#e66767',
-  gold: [201, 162, 74] as const,
+  // The gold tank is the bright one: a pale silver-white, not a yellow.
+  gold: [226, 230, 236] as const,
   liquid: [132, 140, 152] as const,
   casing: '#060708',
 };
