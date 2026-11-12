@@ -204,8 +204,9 @@ Backgrounds are neutral blacks and slate greys. Colour is kept for meaning:
   weather map, with gold and against gold in the gold views, together and
   opposite in linked pairs. Grey is the middle.
 - **Green and red** mean up and down, always with an arrow or a sign.
-- **White** is the gold tank, the price line, and the replay and demo
-  markers. There is no orange and no yellow.
+- **Metallic gold** is gold itself (its tank, its chart line, its live
+  price) and the replay and demo markers. It is always the rich metallic
+  tone; there is no orange and no lemon, dull or brownish yellow.
 
 Text is always a neutral ink, with a coloured mark beside it where
 identity matters, so nothing depends on reading coloured words.

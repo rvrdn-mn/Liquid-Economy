@@ -31,8 +31,10 @@ const C = {
   dim: '#8a9099',
   up: '#2fa87a',
   down: '#e66767',
-  // The gold tank is the bright one: a pale silver-white, not a yellow.
-  gold: [226, 230, 236] as const,
+  // Metallic gold: a rich base with a bright sheen, never a flat or dull yellow.
+  gold: [212, 175, 55] as const,
+  goldLight: [247, 226, 140] as const,
+  goldDeep: [184, 146, 42] as const,
   liquid: [132, 140, 152] as const,
   casing: '#060708',
 };
@@ -105,7 +107,7 @@ export const liquidPanel: PanelFactory = (body, footer, ctx) => {
     g.closePath();
   };
 
-  const drawTank = (g: CanvasRenderingContext2D, x: number, y: number, w: number, hgt: number, fill: number, color: readonly [number, number, number], time: number, known: boolean) => {
+  const drawTank = (g: CanvasRenderingContext2D, x: number, y: number, w: number, hgt: number, fill: number, color: readonly [number, number, number], time: number, known: boolean, metal = false) => {
     const r = Math.min(10, w * 0.08);
     g.save();
     roundRect(g, x, y, w, hgt, r);
@@ -123,13 +125,32 @@ export const liquidPanel: PanelFactory = (body, footer, ctx) => {
       }
       g.lineTo(x + w, y + hgt);
       g.closePath();
-      const grad = g.createLinearGradient(0, surface, 0, y + hgt);
-      grad.addColorStop(0, rgba(color, 0.85));
-      grad.addColorStop(1, rgba(color, 0.35));
-      g.fillStyle = grad;
-      g.fill();
+      if (metal) {
+        // Polished metal: light and shade run across the tank like a sheen on a bar of gold,
+        // then the whole thing deepens toward the bottom.
+        const sheen = g.createLinearGradient(x, 0, x + w, 0);
+        sheen.addColorStop(0, rgba(C.goldDeep, 1));
+        sheen.addColorStop(0.16, rgba(C.gold, 1));
+        sheen.addColorStop(0.36, rgba(C.goldLight, 1));
+        sheen.addColorStop(0.52, rgba(C.gold, 1));
+        sheen.addColorStop(0.82, rgba(C.goldDeep, 1));
+        sheen.addColorStop(1, 'rgba(150, 116, 30, 1)');
+        g.fillStyle = sheen;
+        g.fill();
+        const depth = g.createLinearGradient(0, surface, 0, y + hgt);
+        depth.addColorStop(0, 'rgba(0, 0, 0, 0)');
+        depth.addColorStop(1, 'rgba(0, 0, 0, 0.2)');
+        g.fillStyle = depth;
+        g.fill();
+      } else {
+        const grad = g.createLinearGradient(0, surface, 0, y + hgt);
+        grad.addColorStop(0, rgba(color, 0.85));
+        grad.addColorStop(1, rgba(color, 0.35));
+        g.fillStyle = grad;
+        g.fill();
+      }
       // A bright line along the surface.
-      g.strokeStyle = rgba(color, 1);
+      g.strokeStyle = metal ? rgba(C.goldLight, 1) : rgba(color, 1);
       g.lineWidth = 1;
       g.beginPath();
       for (let i = 0; i <= 24; i++) {
@@ -277,7 +298,7 @@ export const liquidPanel: PanelFactory = (body, footer, ctx) => {
     });
 
     // The gold tank.
-    drawTank(g, goldX, goldY, goldW, goldH, goldFill, C.gold, time, true);
+    drawTank(g, goldX, goldY, goldW, goldH, goldFill, C.gold, time, true, true);
     g.textAlign = 'left';
     g.textBaseline = 'alphabetic';
     g.font = mono(small * 0.92);

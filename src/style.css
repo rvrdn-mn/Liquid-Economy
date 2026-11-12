@@ -5,8 +5,9 @@
  * forward. Colour is kept for meaning only:
  *   blue / purple   the two ends of a scale (strong / weak, with / against)
  *   green / red     up and down
- *   white           gold's own tank and line, and the replay and demo markers
- * There is no orange and no yellow anywhere.
+ *   metallic gold   gold itself, and the replay and demo markers
+ * Gold is always the rich metallic tone, with a sheen where there is room
+ * for one. There is no orange, and no lemon, dull or brownish yellow.
  * Text is always a neutral ink; a coloured mark beside it carries identity.
  */
 :root {
@@ -23,6 +24,10 @@
   --faint: #5d636c;
   --blue: #2c9ad8;
   --purple: #a15fe0;
+  --gold: #d4af37;
+  --gold-light: #f7e28c;
+  --gold-deep: #96701a;
+  --gold-metal: linear-gradient(135deg, #f7e28c 0%, #d4af37 42%, #b8922a 68%, #e6c65c 100%);
   --up: #2fa87a;
   --down: #e66767;
   --radius: 10px;
@@ -45,7 +50,7 @@ h1, h2, h3, p { margin: 0; }
 .dim, .muted { color: var(--muted); }
 .up { color: var(--up); }
 .down { color: var(--down); }
-.gold { color: var(--text); }
+.gold { color: var(--gold); }
 .error { color: var(--down); }
 .warn { color: var(--text-2); }
 .ok { color: var(--text-2); }
@@ -57,7 +62,7 @@ h1, h2, h3, p { margin: 0; }
 
 .sidebar { display: flex; flex-direction: column; gap: 14px; padding: 16px 10px 12px; border-right: 1px solid var(--border); background: var(--bg); min-height: 0; overflow-y: auto; }
 .brand { display: flex; align-items: center; gap: 9px; padding: 2px 8px 8px; }
-.brand-mark { width: 9px; height: 9px; border-radius: 2px; background: var(--blue); transform: rotate(45deg); flex: none; }
+.brand-mark { width: 9px; height: 9px; border-radius: 2px; background: var(--gold-metal); transform: rotate(45deg); flex: none; }
 .brand-name { font-size: 13px; font-weight: 600; letter-spacing: 0.01em; color: var(--text); white-space: nowrap; }
 .nav-group { display: flex; flex-direction: column; gap: 1px; }
 .nav-heading { padding: 0 8px 5px; font-size: 11px; color: var(--faint); letter-spacing: 0.04em; }
@@ -92,7 +97,7 @@ kbd { font-family: var(--mono); font-size: 11px; background: var(--surface-2); b
 .chip { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; color: var(--text-2); font-family: var(--mono); font-size: 11.5px; cursor: pointer; }
 .chip:hover { border-color: var(--border-strong); color: var(--text); }
 .tag, .replay-tag { display: inline-block; padding: 1px 6px; border-radius: 4px; font-family: var(--mono); font-size: 10.5px; font-weight: 600; letter-spacing: 0.03em; }
-.tag-gold, .replay-tag { background: var(--text); color: #0b0c0e; }
+.tag-gold, .replay-tag { background: var(--gold-metal); color: #1a1405; }
 
 /* Segmented controls (timeframes, lookbacks, windows) */
 .segmented, .tf-bar { display: inline-flex; padding: 2px; gap: 1px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); }
@@ -106,7 +111,8 @@ kbd { font-family: var(--mono); font-size: 11px; background: var(--surface-2); b
 .picker-button { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 8px 0 11px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: pointer; color: var(--muted); }
 .picker-button:hover { border-color: var(--border-strong); }
 .picker-symbol { font-family: var(--mono); font-weight: 600; font-size: 13px; color: var(--text); }
-.picker-symbol.gold { color: var(--text); }
+.picker-symbol.gold { color: var(--gold); }
+.picker-symbol.gold { color: var(--gold); }
 .picker-popover { position: absolute; top: 36px; left: 0; z-index: 40; width: 250px; background: var(--surface-2); border: 1px solid var(--border-strong); border-radius: var(--radius); box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55); overflow: hidden; }
 .picker-search { width: 100%; height: 36px; padding: 0 12px; background: none; border: 0; border-bottom: 1px solid var(--border); outline: none; }
 .picker-list { max-height: 340px; overflow-y: auto; padding: 4px; }
@@ -136,7 +142,7 @@ kbd { font-family: var(--mono); font-size: 11px; background: var(--surface-2); b
 .ticker { display: inline-flex; align-items: baseline; gap: 7px; height: 30px; padding: 0 11px; background: none; border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: pointer; white-space: nowrap; line-height: 28px; }
 .ticker:hover { border-color: var(--border-strong); }
 .ticker-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--up); align-self: center; }
-.ticker-name { color: var(--muted); }
+.ticker-name { color: var(--gold); }
 .ticker-price { font-family: var(--mono); font-weight: 600; color: var(--text); }
 .ticker-age { color: var(--faint); font-size: 11px; }
 .ticker.stale .ticker-dot { background: var(--faint); }

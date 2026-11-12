@@ -28,8 +28,8 @@ const COLORS = {
   border: '#22262d',
   up: '#2fa87a',
   down: '#e66767',
-  live: '#2c9ad8',
-  line: '#dfe2e7',
+  gold: '#d4af37',
+  line: '#b9bdc4',
   mark: '#b9bdc4',
 };
 
@@ -217,7 +217,7 @@ export const chartPanel: PanelFactory = (body, footer, ctx) => {
 
     if (data.source.closeOnly) {
       // One value per day: a line is honest, flat candles would not be.
-      const line = chart.addSeries(LineSeries, { color: COLORS.line, lineWidth: 2, priceFormat });
+      const line = chart.addSeries(LineSeries, { color: data.instrument === 'XAUUSD' ? COLORS.gold : COLORS.line, lineWidth: 2, priceFormat });
       line.setData(data.bars.map((b) => ({ time: b.time as UTCTimestamp, value: b.close })));
       series = line;
     } else {
@@ -274,7 +274,7 @@ export const chartPanel: PanelFactory = (body, footer, ctx) => {
       liveLineOn = null;
     }
     if (!want || !series || !q) return;
-    const options = { price: q.price, color: COLORS.live, lineWidth: 1 as const, lineStyle: LineStyle.Dashed, axisLabelVisible: true, title: `live · ${q.source.label}` };
+    const options = { price: q.price, color: COLORS.gold, lineWidth: 1 as const, lineStyle: LineStyle.Dashed, axisLabelVisible: true, title: `live · ${q.source.label}` };
     if (liveLine) liveLine.applyOptions(options);
     else {
       liveLine = series.createPriceLine(options);
@@ -292,6 +292,7 @@ export const chartPanel: PanelFactory = (body, footer, ctx) => {
     const { instrument, timeframe } = state.settings;
     const mine = ++ticket;
     symbol.textContent = `${instrument.slice(0, 3)}/${instrument.slice(3)} · ${timeframe}`;
+    symbol.classList.toggle('gold', instrument === 'XAUUSD');
     const data = await hub.getBars({ instrument, timeframe });
     if (mine !== ticket) return; // a newer request overtook this one
     if (data) show(data);
